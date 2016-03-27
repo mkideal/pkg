@@ -74,4 +74,4 @@ func NewPool(factories ...map[string]Func) (*Pool, error)
 
 ## External
 
-* [exp](https://github.com/mkideal/tools/exp) - `a command line app for evaluate expression`
+* [exp](https://github.com/mkideal/tools/tree/master/exp) - `a command line app for evaluate expression`
