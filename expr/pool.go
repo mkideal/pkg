@@ -72,6 +72,7 @@ var newDefaultFactory = func() map[string]Func {
 		"min":  minFn,
 		"max":  maxFn,
 		"rand": randFn,
+		"iff":  iffFn,
 	}
 }
 
@@ -123,4 +124,19 @@ func randFn(args ...float64) (float64, error) {
 		return float64(rand.Intn(y-x+1) + x), nil
 	}
 	return 0, fmt.Errorf("too many arguments for function `rand`: arguments size=%d", len(args))
+}
+
+func iffFn(args ...float64) (float64, error) {
+	var v2 float64
+	if len(args) == 2 {
+		v2 = 0
+	} else if len(args) == 3 {
+		v2 = args[2]
+	} else {
+		return 0, fmt.Errorf("bad arguments size for function `iff`")
+	}
+	if args[0] != 0 {
+		return args[1], nil
+	}
+	return v2, nil
 }
