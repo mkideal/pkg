@@ -8,7 +8,6 @@ import (
 )
 
 type (
-	// Func wrap function type
 	Func func(...float64) (float64, error)
 
 	// VarGetter define interface for getting value of variable
@@ -35,7 +34,7 @@ func (getter Getter) GetVar(name string) (float64, bool) {
 	return v, ok
 }
 
-// New creates an Expr and parses string s, pool maybe nil
+// New creates an Expr and parses string s, pool can be nil
 func New(s string, pool *Pool) (*Expr, error) {
 	s = strings.TrimSpace(s)
 	if pool == nil {
@@ -92,7 +91,7 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 }
 
 // Eval calculate the expression
-// getter can nil if not any variable in expression
+// getter can be nil if not any variable in expression
 func (e *Expr) Eval(getter VarGetter) (float64, error) {
 	if e.root == nil {
 		return 0, nil
