@@ -18,14 +18,8 @@ import (
 
 var enableDebug = false
 
-// EnableDebug open debug mode
-func EnableDebug() {
-	enableDebug = true
-}
-
-// DisableDebug close debug mode
-func DisableDebug() {
-	enableDebug = false
+func SwitchDebug(on bool) {
+	enableDebug = on
 }
 
 var gopaths = func() []string {
