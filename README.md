@@ -7,3 +7,4 @@
 `pkg` contains some utility packages.
 
 * [**expr**](./expr/README.md) - `evaluate expression`
+* [**smtpd**](./smtpd/README.md) - `smtp server`[RFC5321](https://tools.ietf.org/html/rfc5321)
