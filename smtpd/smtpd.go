@@ -1,34 +1,40 @@
 package smtpd
 
 import (
-	"bytes"
 	"net"
 	"net/textproto"
+	"regexp"
 	"strings"
 
 	"github.com/mkideal/pkg/debug"
 )
 
-var ServiceName = "Service ready"
+var ServiceInfo = "Service ready"
+
+var (
+	fromRegexp = regexp.MustCompile("[Ff][Rr][Oo][Mm]:(.+)")
+	toRegexp   = regexp.MustCompile("[Tt][Oo]:(.+)")
+)
 
 // The NOOP, HELP, EXPN, VRFY, and RSET commands can be used at any time
 // during a session, or without previously initializing a session.
 const (
 	NONE = ""
 
-	EHLO = "EHLO"
-	HELO = "HELO"
-	MAIL = "MAIL"
-	RCPT = "RCPT"
-	DATA = "DATA"
-	RSET = "RSET"
-	VRFY = "VRFY"
-	EXPN = "EXPN"
-	HELP = "HELP"
-	NOOP = "NOOP"
-	QUIT = "QUIT"
-	SIZE = "SIZE"
-	AUTH = "AUTH"
+	EHLO     = "EHLO"
+	HELO     = "HELO"
+	MAIL     = "MAIL"
+	RCPT     = "RCPT"
+	DATA     = "DATA"
+	RSET     = "RSET"
+	VRFY     = "VRFY"
+	EXPN     = "EXPN"
+	HELP     = "HELP"
+	NOOP     = "NOOP"
+	QUIT     = "QUIT"
+	SIZE     = "SIZE"
+	AUTH     = "AUTH"
+	STARTTLS = "STARTTLS"
 )
 
 type Server struct {
@@ -59,23 +65,33 @@ func (svr *Server) Start(addr string, listenCallback func(string)) error {
 
 // Sesion
 type Session struct {
-	nativeConn  net.Conn
-	conn        *textproto.Conn
-	prevCommand string
-	didHello    bool
-	buff        *bytes.Buffer
+	nativeConn net.Conn
+	conn       *textproto.Conn
+
+	// whether the Session is using TLS
+	tls bool
+
+	// supported extensions
+	ext map[string]string
+
+	didHello bool
+
+	starttls []byte
+	auth     []byte
+	mail     []byte
+	rcpt     []byte
+	data     []byte
 }
 
 func newSession(conn net.Conn) *Session {
 	s := new(Session)
 	s.nativeConn = conn
 	s.conn = textproto.NewConn(conn)
-	s.buff = bytes.NewBufferString("")
 	return s
 }
 
 func (s *Session) run() {
-	s.conn.PrintfLine("%3d %s", CodeServiceReady, ServiceName)
+	s.conn.PrintfLine("%3d %s", CodeServiceReady, ServiceInfo)
 	for {
 		line, err := s.conn.ReadLine()
 		if err != nil {
@@ -102,7 +118,7 @@ func (s *Session) dispatch(cmd, args string) (quit bool) {
 	debug.Debugf("recv command: %q, args: %q", cmd, args)
 	switch cmd {
 	case NOOP:
-		s.responseOK()
+		s.onNoOp()
 	case HELP:
 		s.commandNotImplemented(cmd)
 	case EXPN:
@@ -110,15 +126,33 @@ func (s *Session) dispatch(cmd, args string) (quit bool) {
 	case VRFY:
 		s.commandNotImplemented(cmd)
 	case RSET:
-		s.commandNotImplemented(cmd)
+		s.onRset()
 
 	case HELO:
-		fallthrough
+		s.onHelo(args)
 	case EHLO:
-		s.onHello(args)
+		s.onEhlo(args)
 
 	case QUIT:
 		quit = s.onQuit()
+
+	case STARTTLS:
+		quit = s.onStartTLS(args)
+
+	case AUTH:
+		quit = s.onAuth(args)
+
+	case MAIL:
+		quit = s.onMail(args)
+
+	case RCPT:
+		quit = s.onRcpt(args)
+
+	case DATA:
+		quit = s.onData(args)
+
+	case NONE:
+		// do nothing
 
 	default:
 		s.commandNotImplemented(cmd)
@@ -130,21 +164,118 @@ func (s *Session) commandNotImplemented(cmd string) {
 	s.conn.PrintfLine("502 command not implemented")
 }
 
-func (s *Session) responseOK() {
-	s.conn.PrintfLine("250 OK")
+func (s *Session) complete() (quit bool) {
+	quit = true
+	return
 }
 
-func (s *Session) onHello(arg string) {
+//------------------
+// command handlers
+//------------------
+
+// HELO
+func (s *Session) onHelo(args string) {
 	s.didHello = true
 
-	if len(arg) > 0 {
+	if len(args) > 0 {
 		s.responseOK()
 	} else {
-		s.conn.PrintfLine("500 syntax error")
+		s.responseSyntaxError()
 	}
 }
 
+// EHLO
+func (s *Session) onEhlo(args string) {
+	s.onEhlo(args)
+}
+
+// NOOP
+func (s *Session) onNoOp() {
+	s.responseOK()
+}
+
+// RSET
+func (s *Session) onRset() {
+	s.mail = nil
+	s.rcpt = nil
+	s.auth = nil
+	s.starttls = nil
+	s.data = nil
+}
+
+// STARTTLS
+func (s *Session) onStartTLS(args string) (quit bool) {
+	s.commandNotImplemented(STARTTLS)
+	return
+}
+
+// AUTH
+func (s *Session) onAuth(args string) (quit bool) {
+	s.commandNotImplemented(AUTH)
+	return
+}
+
+// MAIL
+func (s *Session) onMail(args string) (quit bool) {
+	matchResult := fromRegexp.FindStringSubmatch(args)
+	if matchResult == nil || len(matchResult) != 2 {
+		s.responseSyntaxError()
+		return
+	}
+	s.mail = []byte(args)
+	return
+}
+
+// RCPT
+func (s *Session) onRcpt(args string) (quit bool) {
+	matchResult := toRegexp.FindStringSubmatch(args)
+	if matchResult == nil || len(matchResult) != 2 {
+		s.responseSyntaxError()
+		return
+	}
+	s.rcpt = []byte(args)
+	return
+}
+
+// DATA
+func (s *Session) onData(args string) (quit bool) {
+	if args == "" {
+		s.responseStartMailInput()
+		return
+	}
+	if args == "." {
+		return s.complete()
+	}
+	if s.data == nil {
+		s.data = []byte(args)
+	} else {
+		s.data = append(s.data, []byte(args)...)
+	}
+	return
+}
+
+// QUIT
 func (s *Session) onQuit() bool {
-	s.conn.PrintfLine("221 bye")
+	s.responseQuit()
 	return true
+}
+
+//----------
+// response
+//----------
+
+func (s *Session) responseOK() {
+	s.conn.PrintfLine("%3d OK", CodeOK)
+}
+
+func (s *Session) responseSyntaxError() {
+	s.conn.PrintfLine("%3d syntax error", CodeSyntaxError)
+}
+
+func (s *Session) responseQuit() {
+	s.conn.PrintfLine("%3d bye", CodeServiceClosing)
+}
+
+func (s *Session) responseStartMailInput() {
+	s.conn.PrintfLine("%3d start mail input", CodeStartMailInput)
 }
