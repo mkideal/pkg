@@ -186,7 +186,7 @@ func (s *Session) onHelo(args string) {
 
 // EHLO
 func (s *Session) onEhlo(args string) {
-	s.onEhlo(args)
+	s.onHelo(args)
 }
 
 // NOOP
