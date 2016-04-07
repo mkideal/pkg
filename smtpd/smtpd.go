@@ -1,6 +1,7 @@
 package smtpd
 
 import (
+	"fmt"
 	"net"
 	"net/textproto"
 	"regexp"
@@ -37,11 +38,17 @@ const (
 	STARTTLS = "STARTTLS"
 )
 
-type Server struct {
+type Repository interface {
+	SaveEmail(from, tos string, data []byte) error
 }
 
-func NewServer() *Server {
+type Server struct {
+	repo Repository
+}
+
+func NewServer(repo Repository) *Server {
 	svr := new(Server)
+	svr.repo = repo
 	return svr
 }
 
@@ -58,13 +65,14 @@ func (svr *Server) Start(addr string, listenCallback func(string)) error {
 		if err != nil {
 			return err
 		}
-		s := newSession(c)
+		s := newSession(svr, c)
 		go s.run()
 	}
 }
 
 // Sesion
 type Session struct {
+	svr        *Server
 	nativeConn net.Conn
 	conn       *textproto.Conn
 
@@ -83,8 +91,9 @@ type Session struct {
 	data     []byte
 }
 
-func newSession(conn net.Conn) *Session {
+func newSession(svr *Server, conn net.Conn) *Session {
 	s := new(Session)
+	s.svr = svr
 	s.nativeConn = conn
 	s.conn = textproto.NewConn(conn)
 	return s
@@ -265,17 +274,23 @@ func (s *Session) onQuit() bool {
 //----------
 
 func (s *Session) responseOK() {
-	s.conn.PrintfLine("%3d OK", CodeOK)
+	s.printf("%3d OK", CodeOK)
 }
 
 func (s *Session) responseSyntaxError() {
-	s.conn.PrintfLine("%3d syntax error", CodeSyntaxError)
+	s.printf("%3d syntax error", CodeSyntaxError)
 }
 
 func (s *Session) responseQuit() {
-	s.conn.PrintfLine("%3d bye", CodeServiceClosing)
+	s.printf("%3d bye", CodeServiceClosing)
 }
 
 func (s *Session) responseStartMailInput() {
-	s.conn.PrintfLine("%3d start mail input", CodeStartMailInput)
+	s.printf("%3d start mail input", CodeStartMailInput)
+}
+
+func (s *Session) printf(format string, args ...interface{}) {
+	resp := fmt.Sprintf(format, args...)
+	debug.Debugf("resp: %s", resp)
+	s.conn.PrintfLine(resp)
 }
