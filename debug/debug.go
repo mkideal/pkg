@@ -18,7 +18,7 @@ import (
 
 var enableDebug = false
 
-func SwitchDebug(on bool) {
+func Switch(on bool) {
 	enableDebug = on
 }
 
