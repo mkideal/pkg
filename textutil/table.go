@@ -19,8 +19,10 @@ type Table interface {
 	Get(i, j int) string
 }
 
+type CellStyleFunc func(row, col int, cell string) string
+
 // WriteTable formats table to writer
-func WriteTable(w io.Writer, table Table) {
+func WriteTable(w io.Writer, table Table, styles ...CellStyleFunc) {
 	rowCount, colCount := table.RowCount(), table.ColCount()
 	if rowCount <= 0 || colCount <= 0 {
 		return
@@ -40,7 +42,7 @@ func WriteTable(w io.Writer, table Table) {
 	fmt.Fprint(w, rowBorder)
 	for i := 0; i < rowCount; i++ {
 		fmt.Fprint(w, "\n")
-		writeTableRow(w, table, i, widthArray)
+		writeTableRow(w, table, i, widthArray, styles...)
 		fmt.Fprint(w, "\n")
 		fmt.Fprint(w, rowBorder)
 	}
@@ -56,13 +58,17 @@ func rowBorderLine(widthArray []int) string {
 	return buf.String()
 }
 
-func writeTableRow(w io.Writer, table Table, rowIndex int, widthArray []int) {
+func writeTableRow(w io.Writer, table Table, rowIndex int, widthArray []int, styles ...CellStyleFunc) {
 	fmt.Fprint(w, borderCol)
 	colCount := table.ColCount()
 	for j := 0; j < colCount; j++ {
 		fmt.Fprint(w, " ")
 		format := fmt.Sprintf("%%-%ds", widthArray[j]+1)
-		fmt.Fprintf(w, format, table.Get(rowIndex, j))
+		s := fmt.Sprintf(format, table.Get(rowIndex, j))
+		for _, fn := range styles {
+			s = fn(rowIndex, j, s)
+		}
+		fmt.Fprintf(w, s)
 		fmt.Fprint(w, borderCol)
 	}
 }
