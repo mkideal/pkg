@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+
+	"github.com/labstack/gommon/color"
 )
 
 const (
@@ -19,10 +21,56 @@ type Table interface {
 	Get(i, j int) string
 }
 
-type CellStyleFunc func(row, col int, cell string) string
+// TableStyler represents s render style for Table
+type TableStyler interface {
+	CellRender(row, col int, cell string, w *ColorWriter)
+	BorderRender(border string, w *ColorWriter)
+}
 
-// WriteTable formats table to writer
-func WriteTable(w io.Writer, table Table, styles ...CellStyleFunc) {
+// ColorWriter
+type ColorWriter struct {
+	w io.Writer
+	*color.Color
+}
+
+func (cw *ColorWriter) Write(b []byte) (int, error) {
+	return cw.w.Write(b)
+}
+
+type colorable interface {
+	Color() *color.Color
+}
+
+func newColorWriter(w io.Writer) *ColorWriter {
+	if cw, ok := w.(colorable); ok {
+		ret := &ColorWriter{w: w}
+		ret.Color = cw.Color()
+		return ret
+	}
+	ret := &ColorWriter{w: w}
+	ret.Color = color.New()
+	ret.Disable()
+	return ret
+}
+
+// DefaultStyle ...
+type DefaultStyle struct{}
+
+func (style DefaultStyle) CellRender(row, col int, cell string, w *ColorWriter) {
+	fmt.Fprint(w, cell)
+}
+
+func (style DefaultStyle) BorderRender(border string, w *ColorWriter) {
+	fmt.Fprint(w, w.Grey(border))
+}
+
+var defaultStyle = DefaultStyle{}
+
+// WriteTable formats table to writer with specified style
+func WriteTable(w io.Writer, table Table, style TableStyler) {
+	if style == nil {
+		style = defaultStyle
+	}
 	rowCount, colCount := table.RowCount(), table.ColCount()
 	if rowCount <= 0 || colCount <= 0 {
 		return
@@ -38,15 +86,16 @@ func WriteTable(w io.Writer, table Table, styles ...CellStyleFunc) {
 		}
 		widthArray[j] = maxWidth
 	}
+	cw := newColorWriter(w)
 	rowBorder := rowBorderLine(widthArray)
-	fmt.Fprint(w, rowBorder)
+	style.BorderRender(rowBorder, cw)
 	for i := 0; i < rowCount; i++ {
-		fmt.Fprint(w, "\n")
-		writeTableRow(w, table, i, widthArray, styles...)
-		fmt.Fprint(w, "\n")
-		fmt.Fprint(w, rowBorder)
+		fmt.Fprint(cw, "\n")
+		writeTableRow(cw, table, i, widthArray, style)
+		fmt.Fprint(cw, "\n")
+		style.BorderRender(rowBorder, cw)
 	}
-	fmt.Fprint(w, "\n")
+	fmt.Fprint(cw, "\n")
 }
 
 func rowBorderLine(widthArray []int) string {
@@ -58,18 +107,15 @@ func rowBorderLine(widthArray []int) string {
 	return buf.String()
 }
 
-func writeTableRow(w io.Writer, table Table, rowIndex int, widthArray []int, styles ...CellStyleFunc) {
-	fmt.Fprint(w, borderCol)
+func writeTableRow(cw *ColorWriter, table Table, rowIndex int, widthArray []int, style TableStyler) {
+	style.BorderRender(borderCol, cw)
 	colCount := table.ColCount()
 	for j := 0; j < colCount; j++ {
-		fmt.Fprint(w, " ")
+		fmt.Fprint(cw, " ")
 		format := fmt.Sprintf("%%-%ds", widthArray[j]+1)
 		s := fmt.Sprintf(format, table.Get(rowIndex, j))
-		for _, fn := range styles {
-			s = fn(rowIndex, j, s)
-		}
-		fmt.Fprintf(w, s)
-		fmt.Fprint(w, borderCol)
+		style.CellRender(rowIndex, j, s, cw)
+		style.BorderRender(borderCol, cw)
 	}
 }
 
