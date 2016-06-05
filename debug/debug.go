@@ -50,11 +50,8 @@ func Debugf(format string, args ...interface{}) {
 }
 
 func Panicf(format string, args ...interface{}) {
-	clr := color.Color{}
-	out := colorable.NewColorableStderr()
-	ColorSwitch(&clr, out, os.Stderr.Fd())
 	buff := bytes.NewBufferString("")
-	buff.WriteString(clr.Red(fmt.Sprintf(format, args...)))
+	buff.WriteString(fmt.Sprintf(format, args...))
 	buff.WriteString("\n\n[stack]\n")
 	skip := 1
 	for {
@@ -66,8 +63,7 @@ func Panicf(format string, args ...interface{}) {
 		buff.WriteString(makeFileLine(file, line))
 		buff.WriteString("\n")
 	}
-	fmt.Fprintf(out, buff.String())
-	os.Exit(999)
+	panic(buff.String())
 }
 
 func TypeName(i interface{}) string {
