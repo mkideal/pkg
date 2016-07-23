@@ -1,5 +1,9 @@
 package boolslice
 
+import (
+	"github.com/mkideal/pkg/container"
+)
+
 type BoolSlice struct {
 	data   []byte
 	length int
@@ -9,11 +13,19 @@ func New() *BoolSlice {
 	return &BoolSlice{data: []byte{}}
 }
 
-func NewWithCap(size int) *BoolSlice {
-	return &BoolSlice{data: make([]byte, 0, (size>>3)+1), length: size}
+func NewWithSize(size, cap int) *BoolSlice {
+	return &BoolSlice{data: make([]byte, (size+7)>>3, (cap+7)>>3), length: size}
 }
 
-func (s *BoolSlice) Len() int                     { return s.length }
+func NewWithSlice(slice []bool) *BoolSlice {
+	size := len(slice)
+	s := NewWithSize(size, size)
+	for i := 0; i < size; i++ {
+		s.Set(i, slice[i])
+	}
+	return s
+}
+
 func (s *BoolSlice) ij(index int) (i int, j byte) { return index >> 3, byte(index & 0x7) }
 
 func (s *BoolSlice) Get(index int) bool {
@@ -55,6 +67,14 @@ func (s *BoolSlice) Pop() (value bool) {
 	return
 }
 
+func (s *BoolSlice) Insert(index int, value bool) {
+	s.Push(value)
+	for i := s.length - 1; i > index; i-- {
+		s.Set(i, s.Get(i-1))
+	}
+	s.Set(index, value)
+}
+
 func (s *BoolSlice) Truncate(from, to int) {
 	if to < s.length {
 		s.length = to
@@ -72,4 +92,61 @@ func (s *BoolSlice) Truncate(from, to int) {
 			s.data = s.data[:n]
 		}
 	}
+}
+
+func (s *BoolSlice) Clone() *BoolSlice {
+	s2 := &BoolSlice{data: make([]byte, s.length), length: s.length}
+	copy(s2.data, s.data)
+	return s2
+}
+
+func (s *BoolSlice) Equal(s2 *BoolSlice) bool {
+	if s.length != s2.length {
+		return false
+	}
+	for i, n := 0, len(s.data); i < n; i++ {
+		if s.data[i] != s2.data[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *BoolSlice) EqualToSlice(s2 []bool) bool {
+	if s.Len() != len(s2) {
+		return false
+	}
+	for i, n := 0, s.Len(); i < n; i++ {
+		if s.Get(i) != s2[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// container.Container adaptor
+type iterator struct {
+	s      *BoolSlice
+	cursor int
+}
+
+func (iter *iterator) Next() (k, v interface{}) {
+	if iter.cursor >= iter.s.length {
+		return iter.cursor, nil
+	}
+	index := iter.cursor
+	iter.cursor++
+	return index, iter.s.Get(index)
+}
+
+func (s *BoolSlice) Len() int                 { return s.length }
+func (s *BoolSlice) Iter() container.Iterator { return &iterator{s: s} }
+func (s *BoolSlice) Contains(value interface{}) bool {
+	v := value.(bool)
+	for i := 0; i < s.length; i++ {
+		if s.Get(i) == v {
+			return true
+		}
+	}
+	return false
 }
