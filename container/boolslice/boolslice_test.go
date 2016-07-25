@@ -12,7 +12,7 @@ var valuesSet = func() [][]bool {
 	n := 100
 	ret := make([][]bool, 0, n)
 	for i := 0; i < n; i++ {
-		size := rand.Intn(100) + 1024
+		size := 1024 + i
 		list := make([]bool, 0, size)
 		for j := 0; j < size; j++ {
 			list = append(list, rand.Intn(2) == 1)
@@ -96,5 +96,9 @@ func TestTruncate(t *testing.T) {
 		s2.Truncate(mid, end)
 		assert.Equal(t, end-mid, s2.Len())
 		assert.True(t, s2.EqualToSlice(values[mid:end]))
+
+		s2 = s1.Clone()
+		s2.Truncate(mid, mid)
+		assert.Equal(t, 0, s2.Len())
 	}
 }
