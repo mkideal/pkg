@@ -7,17 +7,26 @@ import (
 	"sync"
 )
 
+type VarMissingFunc func(string) (float64, error)
+
+func DefaultOnVarMissing(varName string) (float64, error) {
+	return 0, fmt.Errorf("var `%s' missing", varName)
+}
+
 type Pool struct {
 	locker sync.RWMutex
 	pool   map[string]*Expr
 
-	factory map[string]Func
+	factory      map[string]Func
+	onVarMissing VarMissingFunc
 }
 
 func NewPool(factories ...map[string]Func) (*Pool, error) {
-	p := new(Pool)
-	p.pool = make(map[string]*Expr)
-	p.factory = newDefaultFactory()
+	p := &Pool{
+		pool:         make(map[string]*Expr),
+		factory:      newDefaultFactory(),
+		onVarMissing: DefaultOnVarMissing,
+	}
 	for _, factory := range factories {
 		if factory == nil {
 			continue
@@ -30,6 +39,10 @@ func NewPool(factories ...map[string]Func) (*Pool, error) {
 		}
 	}
 	return p, nil
+}
+
+func (p *Pool) SetOnVarMissing(fn VarMissingFunc) {
+	p.onVarMissing = fn
 }
 
 func (p *Pool) get(s string) (*Expr, bool) {

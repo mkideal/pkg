@@ -91,7 +91,7 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 }
 
 // Eval calculate the expression
-// getter can be nil if not any variable in expression
+// getter maybe nil
 func (e *Expr) Eval(getter VarGetter) (float64, error) {
 	if e.root == nil {
 		return 0, nil

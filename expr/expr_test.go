@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestConstExpr(t *testing.T) {
@@ -148,4 +150,24 @@ func TestCustomFactory(t *testing.T) {
 			t.Errorf("%q want %f, got %f", x.s, x.val, val)
 		}
 	}
+}
+
+func TestOnVarMissing(t *testing.T) {
+	defaults := map[string]float64{
+		"a": 0,
+		"b": 1,
+	}
+	pool, _ := NewPool()
+	pool.SetOnVarMissing(func(varName string) (float64, error) {
+		if dft, ok := defaults[varName]; ok {
+			return dft, nil
+		}
+		return DefaultOnVarMissing(varName)
+	})
+	v, err := Eval("2 / b + a + x", map[string]float64{"x": 1}, pool)
+	assert.Nil(t, err)
+	assert.Equal(t, float64(3), v)
+
+	v, err = Eval("2 / b + a + undefined", nil, pool)
+	assert.NotNil(t, err)
 }

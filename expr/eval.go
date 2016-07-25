@@ -50,11 +50,11 @@ func eval(e *Expr, getter VarGetter, node ast.Expr) (float64, error) {
 	switch n := node.(type) {
 	case *ast.Ident:
 		if getter == nil {
-			return 0, fmt.Errorf("var `%v` missing", n.Name)
+			return e.pool.onVarMissing(n.Name)
 		}
 		val, ok := getter.GetVar(n.Name)
 		if !ok {
-			return 0, fmt.Errorf("var `%v` missing", n.Name)
+			return e.pool.onVarMissing(n.Name)
 		}
 		return val, nil
 
