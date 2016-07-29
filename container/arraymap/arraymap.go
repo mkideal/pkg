@@ -20,10 +20,10 @@ func New() *ArrayMap {
 	}
 }
 
-func NewWithCap(reservedSize int) *ArrayMap {
+func NewWithSize(size, cap int) *ArrayMap {
 	return &ArrayMap{
-		data:       make([]T, 0, reservedSize),
-		validFlags: boolslice.NewWithCap(reservedSize),
+		data:       make([]T, size, cap),
+		validFlags: boolslice.NewWithSize(size, cap),
 		holes:      []int{},
 	}
 }
