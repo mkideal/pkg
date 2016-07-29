@@ -6,5 +6,8 @@
 
 `pkg` contains some utility packages.
 
-* [**expr**](./expr/README.md) - `evaluate expression`
-* [**smtpd**](./smtpd/README.md) - `smtp server`[RFC5321](https://tools.ietf.org/html/rfc5321)
+* **container** - implement some containers: ArrayMap, BoolSlice
+* **debug** - some functions for debugging
+* **expr** - evaluate expression
+* **option** - default parametor of function
+* **textutil** - text operations
