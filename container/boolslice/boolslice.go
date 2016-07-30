@@ -104,12 +104,17 @@ func (s *BoolSlice) Equal(s2 *BoolSlice) bool {
 	if s.length != s2.length {
 		return false
 	}
-	for i, n := 0, len(s.data); i < n; i++ {
+	n := len(s.data)
+	if n == 0 {
+		return true
+	}
+	for i := 0; i+1 < n; i++ {
 		if s.data[i] != s2.data[i] {
 			return false
 		}
 	}
-	return true
+	j := byte(s.length & 0x7)
+	return s.data[n-1]<<(8-j) == s2.data[n-1]<<(8-j)
 }
 
 func (s *BoolSlice) EqualToSlice(s2 []bool) bool {

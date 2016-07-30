@@ -34,6 +34,10 @@ func TestPushAndPop(t *testing.T) {
 		}
 		assert.Equal(t, values[s.Len()-1], s.Pop())
 	}
+	s1 := boolslice.NewWithSlice([]bool{true, true, true, true, true, true, true, true})
+	s2 := boolslice.NewWithSlice([]bool{true, true, true, true, true, true, true})
+	s1.Pop()
+	assert.True(t, s1.Equal(s2))
 }
 
 func TestSet(t *testing.T) {
