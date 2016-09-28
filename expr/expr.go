@@ -8,11 +8,11 @@ import (
 )
 
 type (
-	Func func(...float64) (float64, error)
+	Func func(...Var) (Var, error)
 
 	// VarGetter define interface for getting value of variable
 	VarGetter interface {
-		GetVar(string) (float64, bool)
+		GetVar(string) (Var, bool)
 	}
 
 	// Expr is top-level object of expr package
@@ -23,12 +23,12 @@ type (
 )
 
 // default VarGetter implement
-type Getter map[string]float64
+type Getter map[string]Var
 
 // GetVar gets the value of variable
-func (getter Getter) GetVar(name string) (float64, bool) {
+func (getter Getter) GetVar(name string) (Var, bool) {
 	if getter == nil {
-		return 0, false
+		return nilValue, false
 	}
 	v, ok := getter[name]
 	return v, ok
@@ -92,25 +92,22 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 
 // Eval calculate the expression
 // getter maybe nil
-func (e *Expr) Eval(getter VarGetter) (float64, error) {
+func (e *Expr) Eval(getter VarGetter) (Var, error) {
 	if e.root == nil {
-		return 0, nil
+		return Zero(), nil
 	}
 	v, err := eval(e, getter, e.root)
 	if err != nil {
-		return 0, err
-	}
-	if v > -1E-12 && v < 1E-12 {
-		v = 0
+		return Zero(), err
 	}
 	return v, nil
 }
 
 // Eval calculate expression with pool(maybe nil)
-func Eval(s string, getter map[string]float64, pool *Pool) (float64, error) {
+func Eval(s string, getter map[string]Var, pool *Pool) (Var, error) {
 	e, err := New(s, pool)
 	if err != nil {
-		return 0, err
+		return Zero(), err
 	}
 	return e.Eval(Getter(getter))
 }

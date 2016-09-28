@@ -28,7 +28,7 @@ func TestConstExpr(t *testing.T) {
 			t.Errorf("parse %q error: %v", x.s, err)
 			continue
 		}
-		if math.Abs(val-x.val) > 1E-6 {
+		if math.Abs(val.Float()-x.val) > 1E-6 {
 			t.Errorf("%q want %f, got %f", x.s, x.val, val)
 		}
 	}
@@ -36,10 +36,10 @@ func TestConstExpr(t *testing.T) {
 
 func TestVarExpr(t *testing.T) {
 	getter := Getter{
-		"x": 1.5,
-		"y": 2.5,
-		"m": 5,
-		"n": 2,
+		"x": Float(1.5),
+		"y": Float(2.5),
+		"m": Float(5),
+		"n": Float(2),
 	}
 
 	for _, x := range []struct {
@@ -85,40 +85,54 @@ func TestVarExpr(t *testing.T) {
 			}
 			continue
 		}
-		if math.Abs(val-x.val) > 1E-6 {
-			t.Errorf("%q want %f, got %f", x.s, x.val, val)
+		if math.Abs(val.Float()-x.val) > 1E-6 {
+			t.Errorf("%q want %f, got %f", x.s, x.val, val.Float())
 		}
 	}
 }
 
 func TestCustomFactory(t *testing.T) {
 	pool, _ := NewPool(map[string]Func{
-		"constant": func(...float64) (float64, error) { return 123, nil },
-		"sum": func(args ...float64) (float64, error) {
-			sum := float64(0)
+		"constant": func(...Var) (Var, error) {
+			return Int(123), nil
+		},
+		"sum": func(args ...Var) (Var, error) {
+			var (
+				sum = Zero()
+				err error
+			)
 			for _, arg := range args {
-				sum += arg
+				sum, err = sum.Add(arg)
+				if err != nil {
+					return sum, err
+				}
 			}
 			return sum, nil
 		},
-		"average": func(args ...float64) (float64, error) {
+		"average": func(args ...Var) (Var, error) {
 			n := len(args)
 			if n == 0 {
-				return 0, fmt.Errorf("missing arguments for function `%s`", "average")
+				return Zero(), fmt.Errorf("missing arguments for function `%s`", "average")
 			}
-			sum := float64(0)
+			var (
+				sum = Zero()
+				err error
+			)
 			for _, arg := range args {
-				sum += arg
+				sum, err = sum.Add(arg)
+				if err != nil {
+					return sum, err
+				}
 			}
-			return sum / float64(n), nil
+			return sum.Quo(Float(float64(n)))
 		},
 	})
 	getter := Getter{
-		"x": 1.5,
-		"y": 2.5,
+		"x": Float(1.5),
+		"y": Float(2.5),
 	}
 
-	for _, x := range []struct {
+	for i, x := range []struct {
 		s     string
 		val   float64
 		isErr bool
@@ -135,39 +149,151 @@ func TestCustomFactory(t *testing.T) {
 		e, err := New(x.s, pool)
 		if err != nil {
 			if !x.isErr {
-				t.Errorf("parse %q error: %v", x.s, err)
+				t.Errorf("%dth: parse %q error: %v", i, x.s, err)
 			}
 			continue
 		}
 		val, err := e.Eval(getter)
 		if err != nil {
 			if !x.isErr {
-				t.Errorf("parse %q error: %v", x.s, err)
+				t.Errorf("%dth: parse %q error: %v", i, x.s, err)
 			}
 			continue
 		}
-		if math.Abs(val-x.val) > 1E-6 {
-			t.Errorf("%q want %f, got %f", x.s, x.val, val)
+		if math.Abs(val.Float()-x.val) > 1E-6 {
+			t.Errorf("%dth: %q want %f, got %f", i, x.s, x.val, val.Float())
 		}
 	}
 }
 
 func TestOnVarMissing(t *testing.T) {
-	defaults := map[string]float64{
-		"a": 0,
-		"b": 1,
+	defaults := map[string]Var{
+		"a": Int(0),
+		"b": Int(1),
 	}
 	pool, _ := NewPool()
-	pool.SetOnVarMissing(func(varName string) (float64, error) {
+	pool.SetOnVarMissing(func(varName string) (Var, error) {
 		if dft, ok := defaults[varName]; ok {
 			return dft, nil
 		}
 		return DefaultOnVarMissing(varName)
 	})
-	v, err := Eval("2 / b + a + x", map[string]float64{"x": 1}, pool)
+	v, err := Eval("2 / b + a + x", map[string]Var{"x": Int(1)}, pool)
 	assert.Nil(t, err)
-	assert.Equal(t, float64(3), v)
+	assert.Equal(t, float64(3), v.Float())
 
 	v, err = Eval("2 / b + a + undefined", nil, pool)
 	assert.NotNil(t, err)
+}
+
+func TestOp(t *testing.T) {
+	for i, tc := range []struct {
+		s      string
+		result Var
+		err    error
+	}{
+		{`1`, True(), nil},
+		{`0`, False(), nil},
+		{`0.0`, False(), nil},
+		{`1.0`, True(), nil},
+		{`"a"`, True(), nil},
+		{`'a'`, True(), nil},
+		{`'a'`, String("a"), nil},
+		{`2 > 1`, True(), nil},
+		{`2 >= 1`, True(), nil},
+		{`1 >= 1`, True(), nil},
+		{`1 <= 1`, True(), nil},
+		{`1 == 1`, True(), nil},
+		{`1 >= 2`, False(), nil},
+		{`1 && 0`, False(), nil},
+		{`1 && 2`, True(), nil},
+		{`1 || 0`, True(), nil},
+		{`1 < 2`, True(), nil},
+		{`1 < 1`, False(), nil},
+		{`1 <= 2`, True(), nil},
+		{`1 <= 0`, False(), nil},
+		{`1 != 0`, True(), nil},
+		{`1 != 1`, False(), nil},
+		{`"a" != "b"`, True(), nil},
+		{`"a" != "a"`, False(), nil},
+		{`"a" == "a"`, True(), nil},
+		{`"ab" < "ac"`, True(), nil},
+		{`"ab" <= "ac"`, True(), nil},
+		{`"ab" <= "ab"`, True(), nil},
+		{`"ab" > "ab"`, False(), nil},
+		{`'a' == 'a'`, True(), nil},
+
+		{`"a" + "b"`, String("ab"), nil},
+		{`"ab" + "bc"`, String("abbc"), nil},
+		{`2 - 1 > 0`, True(), nil},
+		{`2 - 1 > 2`, False(), nil},
+		{`2 + 1 > 2`, True(), nil},
+		{`2 - 1`, Int(1), nil},
+
+		{`"a" - "b"`, String(""), ErrTypeMismatchForOp},
+		{`"a" + 1`, String(""), ErrTypeMismatchForOp},
+		{`"a" + 1.2`, String(""), ErrTypeMismatchForOp},
+		{`"a" - 1`, String(""), ErrTypeMismatchForOp},
+	} {
+		e, err := New(tc.s, nil)
+		if err != nil {
+			t.Errorf("%dth: invalid expression `%s'", i, tc.s)
+			continue
+		}
+		got, err := e.Eval(nil)
+		if err != nil {
+			if err != tc.err {
+				t.Errorf("%dth: want error `%v', got error `%v'", i, tc.err, err)
+				continue
+			}
+		} else if tc.err != nil {
+			t.Errorf("%dth: want error `%s', got nil", i, tc.err)
+			continue
+		}
+		eq, _ := tc.result.Neq(got)
+		if eq.Bool() {
+			t.Errorf("%dth: result error, want `%s', got `%s'", i, tc.result.String(), got.String())
+		}
+	}
+}
+
+func TestOpWithGetter(t *testing.T) {
+	getter := Getter(map[string]Var{
+		"a": String("u"),
+		"b": String("v"),
+		"c": String("w"),
+		"x": Int(1),
+		"y": Int(2),
+		"z": Int(0),
+	})
+	for i, tc := range []struct {
+		s      string
+		result Var
+		err    error
+	}{
+		{`a + b`, String("uv"), nil},
+		{`x + y`, Int(3), nil},
+
+		{`a + 1`, nilValue, ErrTypeMismatchForOp},
+	} {
+		e, err := New(tc.s, nil)
+		if err != nil {
+			t.Errorf("%dth: invalid expression `%s'", i, tc.s)
+			continue
+		}
+		got, err := e.Eval(getter)
+		if err != nil {
+			if err != tc.err {
+				t.Errorf("%dth: want error `%v', got error `%v'", i, tc.err, err)
+				continue
+			}
+		} else if tc.err != nil {
+			t.Errorf("%dth: want error `%s', got nil", i, tc.err)
+			continue
+		}
+		eq, _ := tc.result.Neq(got)
+		if eq.Bool() {
+			t.Errorf("%dth: result error, want `%s', got `%s'", i, tc.result.String(), got.String())
+		}
+	}
 }

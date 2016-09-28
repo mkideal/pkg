@@ -4,49 +4,11 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	"math"
 	"strconv"
 )
 
-//-------------
-// + - * / % ^
-//-------------
-
-// +
-func add(x, y float64) (float64, error) {
-	return x + y, nil
-}
-
-// -
-func sub(x, y float64) (float64, error) {
-	return x - y, nil
-}
-
-// *
-func mul(x, y float64) (float64, error) {
-	return x * y, nil
-}
-
-// /
-func quo(x, y float64) (float64, error) {
-	if y == 0 {
-		return 0, fmt.Errorf("divided 0")
-	}
-	return x / y, nil
-}
-
-// %
-func rem(x, y float64) (float64, error) {
-	return math.Mod(x, y), nil
-}
-
-// ^
-func pow(x, y float64) (float64, error) {
-	return math.Pow(x, y), nil
-}
-
 // eval the expression
-func eval(e *Expr, getter VarGetter, node ast.Expr) (float64, error) {
+func eval(e *Expr, getter VarGetter, node ast.Expr) (Var, error) {
 	switch n := node.(type) {
 	case *ast.Ident:
 		if getter == nil {
@@ -59,59 +21,113 @@ func eval(e *Expr, getter VarGetter, node ast.Expr) (float64, error) {
 		return val, nil
 
 	case *ast.BasicLit:
-		return strconv.ParseFloat(n.Value, 64)
+		switch n.Kind {
+		case token.INT:
+			i, err := strconv.ParseInt(n.Value, 10, 64)
+			if err != nil {
+				return Zero(), err
+			}
+			return Int(i), nil
+		case token.FLOAT:
+			f, err := strconv.ParseFloat(n.Value, 64)
+			if err != nil {
+				return Zero(), err
+			}
+			return Float(f), nil
+		case token.CHAR, token.STRING:
+			s, err := strconv.Unquote(n.Value)
+			if err != nil {
+				return Zero(), err
+			}
+			return String(s), nil
+		default:
+			return Zero(), fmt.Errorf("unsupported token: %s(%v)", n.Value, n.Kind)
+		}
 
 	case *ast.ParenExpr:
 		return eval(e, getter, n.X)
 
 	case *ast.CallExpr:
-		args := make([]float64, 0, len(n.Args))
+		args := make([]Var, 0, len(n.Args))
 		for _, arg := range n.Args {
 			if val, err := eval(e, getter, arg); err != nil {
-				return 0, err
+				return Zero(), err
 			} else {
 				args = append(args, val)
 			}
 		}
 		if fnIdent, ok := n.Fun.(*ast.Ident); ok {
 			if fn, ok := e.pool.fn(fnIdent.Name); !ok {
-				return 0, fmt.Errorf("undefined function `%v`", fnIdent.Name)
+				return Zero(), fmt.Errorf("undefined function `%v`", fnIdent.Name)
 			} else {
 				return fn(args...)
 			}
 		}
-		return 0, fmt.Errorf("unexpected func type: %T", n.Fun)
+		return Zero(), fmt.Errorf("unexpected func type: %T", n.Fun)
 
 	case *ast.UnaryExpr:
-		return eval(e, getter, n.X)
+		switch n.Op {
+		case token.ADD:
+			return eval(e, getter, n.X)
+		case token.SUB:
+			x, err := eval(e, getter, n.X)
+			if err == nil {
+				x, err = Zero().Sub(x)
+			}
+			return x, err
+		case token.NOT:
+			x, err := eval(e, getter, n.X)
+			if err == nil {
+				x = x.Not()
+			}
+			return x, err
+		default:
+			return Zero(), fmt.Errorf("unsupported unary op: %v", n.Op)
+		}
 
 	case *ast.BinaryExpr:
 		x, err := eval(e, getter, n.X)
 		if err != nil {
-			return 0, err
+			return Zero(), err
 		}
 		y, err := eval(e, getter, n.Y)
 		if err != nil {
-			return 0, err
+			return Zero(), err
 		}
 		switch n.Op {
 		case token.ADD:
-			return add(x, y)
+			return x.Add(y)
 		case token.SUB:
-			return sub(x, y)
+			return x.Sub(y)
 		case token.MUL:
-			return mul(x, y)
+			return x.Mul(y)
 		case token.QUO:
-			return quo(x, y)
+			return x.Quo(y)
 		case token.REM:
-			return rem(x, y)
+			return x.Rem(y)
 		case token.XOR:
-			return pow(x, y)
+			return x.Pow(y)
+		case token.LAND:
+			return x.And(y), nil
+		case token.LOR:
+			return x.Or(y), nil
+		case token.EQL:
+			return x.Eq(y)
+		case token.NEQ:
+			return x.Neq(y)
+		case token.GTR:
+			return x.Gt(y)
+		case token.GEQ:
+			return x.Ge(y)
+		case token.LSS:
+			return x.Lt(y)
+		case token.LEQ:
+			return x.Le(y)
 		default:
-			return 0, fmt.Errorf("unexpected binary operator: %v", n.Op)
+			return Zero(), fmt.Errorf("unexpected binary operator: %v", n.Op)
 		}
 
 	default:
-		return 0, fmt.Errorf("unexpected node type %T", n)
+		return Zero(), fmt.Errorf("unexpected node type %T", n)
 	}
 }
