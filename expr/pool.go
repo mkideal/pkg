@@ -7,10 +7,10 @@ import (
 	"sync"
 )
 
-type VarMissingFunc func(string) (float64, error)
+type VarMissingFunc func(string) (Var, error)
 
-func DefaultOnVarMissing(varName string) (float64, error) {
-	return 0, fmt.Errorf("var `%s' missing", varName)
+func DefaultOnVarMissing(varName string) (Var, error) {
+	return Zero(), fmt.Errorf("var `%s' missing", varName)
 }
 
 type Pool struct {
@@ -82,10 +82,9 @@ var defaultPool = func() *Pool {
 // default factory
 var newDefaultFactory = func() map[string]Func {
 	return map[string]Func{
-		"min":  minFn,
-		"max":  maxFn,
-		"rand": randFn,
-		"iff":  iffFn,
+		"min":  builtin_min,
+		"max":  builtin_max,
+		"rand": builtin_rand,
 	}
 }
 
@@ -93,63 +92,56 @@ var newDefaultFactory = func() map[string]Func {
 // builtin function
 //------------------
 
-func minFn(args ...float64) (float64, error) {
+func builtin_min(args ...Var) (Var, error) {
 	if len(args) == 0 {
-		return 0, fmt.Errorf("missing arguments for function `min`")
+		return nilValue, fmt.Errorf("missing arguments for function `min`")
 	}
 	x := args[0]
 	for i, size := 1, len(args); i < size; i++ {
-		if args[i] < x {
+		lt, err := args[i].Lt(x)
+		if err != nil {
+			return Zero(), err
+		}
+		if lt.Bool() {
 			x = args[i]
 		}
 	}
 	return x, nil
 }
 
-func maxFn(args ...float64) (float64, error) {
+func builtin_max(args ...Var) (Var, error) {
 	if len(args) == 0 {
-		return 0, fmt.Errorf("missing arguments for function `max`")
+		return nilValue, fmt.Errorf("missing arguments for function `max`")
 	}
 	x := args[0]
 	for i, size := 1, len(args); i < size; i++ {
-		if args[i] > x {
+		gt, err := args[i].Gt(x)
+		if err != nil {
+			return Zero(), err
+		}
+		if gt.Bool() {
 			x = args[i]
 		}
 	}
 	return x, nil
 }
 
-func randFn(args ...float64) (float64, error) {
+func builtin_rand(args ...Var) (Var, error) {
 	if len(args) == 0 {
-		return float64(rand.Intn(10000)), nil
+		return Int(int64(rand.Intn(10000))), nil
 	}
 	if len(args) == 1 {
-		x := int(args[0])
+		x := args[0].Int()
 		if x <= 0 {
-			return 0, fmt.Errorf("bad argument for function `rand`: argument %v <= 0", x)
+			return Zero(), fmt.Errorf("bad argument for function `rand`: argument %v <= 0", x)
 		}
 	}
 	if len(args) == 2 {
-		x, y := int(args[0]), int(args[1])
+		x, y := int(args[0].Int()), int(args[1].Int())
 		if x > y {
-			return 0, fmt.Errorf("bad arguments for function `rand`: first > second")
+			return Zero(), fmt.Errorf("bad arguments for function `rand`: first > second")
 		}
-		return float64(rand.Intn(y-x+1) + x), nil
+		return Int(int64(rand.Intn(y-x+1) + x)), nil
 	}
-	return 0, fmt.Errorf("too many arguments for function `rand`: arguments size=%d", len(args))
-}
-
-func iffFn(args ...float64) (float64, error) {
-	var v2 float64
-	if len(args) == 2 {
-		v2 = 0
-	} else if len(args) == 3 {
-		v2 = args[2]
-	} else {
-		return 0, fmt.Errorf("bad arguments size for function `iff`")
-	}
-	if args[0] != 0 {
-		return args[1], nil
-	}
-	return v2, nil
+	return Zero(), fmt.Errorf("too many arguments for function `rand`: arguments size=%d", len(args))
 }
