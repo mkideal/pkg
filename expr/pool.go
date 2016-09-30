@@ -7,9 +7,9 @@ import (
 	"sync"
 )
 
-type VarMissingFunc func(string) (Var, error)
+type VarMissingFunc func(string) (Value, error)
 
-func DefaultOnVarMissing(varName string) (Var, error) {
+func DefaultOnVarMissing(varName string) (Value, error) {
 	return Zero(), fmt.Errorf("var `%s' missing", varName)
 }
 
@@ -19,6 +19,14 @@ type Pool struct {
 
 	factory      map[string]Func
 	onVarMissing VarMissingFunc
+}
+
+func MustNewPool(factories ...map[string]Func) *Pool {
+	pool, err := NewPool(factories...)
+	if err != nil {
+		panic(err)
+	}
+	return pool
 }
 
 func NewPool(factories ...map[string]Func) (*Pool, error) {
@@ -92,7 +100,7 @@ var newDefaultFactory = func() map[string]Func {
 // builtin function
 //------------------
 
-func builtin_min(args ...Var) (Var, error) {
+func builtin_min(args ...Value) (Value, error) {
 	if len(args) == 0 {
 		return nilValue, fmt.Errorf("missing arguments for function `min`")
 	}
@@ -109,7 +117,7 @@ func builtin_min(args ...Var) (Var, error) {
 	return x, nil
 }
 
-func builtin_max(args ...Var) (Var, error) {
+func builtin_max(args ...Value) (Value, error) {
 	if len(args) == 0 {
 		return nilValue, fmt.Errorf("missing arguments for function `max`")
 	}
@@ -126,7 +134,7 @@ func builtin_max(args ...Var) (Var, error) {
 	return x, nil
 }
 
-func builtin_rand(args ...Var) (Var, error) {
+func builtin_rand(args ...Value) (Value, error) {
 	if len(args) == 0 {
 		return Int(int64(rand.Intn(10000))), nil
 	}

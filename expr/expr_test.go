@@ -3,6 +3,7 @@ package expr
 import (
 	"fmt"
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -93,10 +94,10 @@ func TestVarExpr(t *testing.T) {
 
 func TestCustomFactory(t *testing.T) {
 	pool, _ := NewPool(map[string]Func{
-		"constant": func(...Var) (Var, error) {
+		"constant": func(...Value) (Value, error) {
 			return Int(123), nil
 		},
-		"sum": func(args ...Var) (Var, error) {
+		"sum": func(args ...Value) (Value, error) {
 			var (
 				sum = Zero()
 				err error
@@ -109,7 +110,7 @@ func TestCustomFactory(t *testing.T) {
 			}
 			return sum, nil
 		},
-		"average": func(args ...Var) (Var, error) {
+		"average": func(args ...Value) (Value, error) {
 			n := len(args)
 			if n == 0 {
 				return Zero(), fmt.Errorf("missing arguments for function `%s`", "average")
@@ -167,18 +168,18 @@ func TestCustomFactory(t *testing.T) {
 }
 
 func TestOnVarMissing(t *testing.T) {
-	defaults := map[string]Var{
+	defaults := map[string]Value{
 		"a": Int(0),
 		"b": Int(1),
 	}
 	pool, _ := NewPool()
-	pool.SetOnVarMissing(func(varName string) (Var, error) {
+	pool.SetOnVarMissing(func(varName string) (Value, error) {
 		if dft, ok := defaults[varName]; ok {
 			return dft, nil
 		}
 		return DefaultOnVarMissing(varName)
 	})
-	v, err := Eval("2 / b + a + x", map[string]Var{"x": Int(1)}, pool)
+	v, err := Eval("2 / b + a + x", map[string]Value{"x": Int(1)}, pool)
 	assert.Nil(t, err)
 	assert.Equal(t, float64(3), v.Float())
 
@@ -189,7 +190,7 @@ func TestOnVarMissing(t *testing.T) {
 func TestOp(t *testing.T) {
 	for i, tc := range []struct {
 		s      string
-		result Var
+		result Value
 		err    error
 	}{
 		{`1`, True(), nil},
@@ -230,10 +231,20 @@ func TestOp(t *testing.T) {
 		{`2 + 1 > 2`, True(), nil},
 		{`2 - 1`, Int(1), nil},
 
-		{`"a" - "b"`, String(""), ErrTypeMismatchForOp},
-		{`"a" + 1`, String(""), ErrTypeMismatchForOp},
-		{`"a" + 1.2`, String(""), ErrTypeMismatchForOp},
-		{`"a" - 1`, String(""), ErrTypeMismatchForOp},
+		{`"a" - "b"`, Nil(), ErrTypeMismatchForOp},
+		{`"a" + 1`, Nil(), ErrTypeMismatchForOp},
+		{`"a" + 1.2`, Nil(), ErrTypeMismatchForOp},
+		{`"a" - 1`, Nil(), ErrTypeMismatchForOp},
+		{`"a" == 1`, Nil(), ErrComparedTypesMismatch},
+		{`"a" != 1`, Nil(), ErrComparedTypesMismatch},
+		{`"a" > 1`, Nil(), ErrComparedTypesMismatch},
+		{`"a" < 1`, Nil(), ErrComparedTypesMismatch},
+		{`"a" >= 1`, Nil(), ErrComparedTypesMismatch},
+		{`"a" <= 1`, Nil(), ErrComparedTypesMismatch},
+		{`1/0`, Nil(), ErrDivideZero},
+		{`1%0`, Nil(), ErrDivideZero},
+		{`0^2`, Nil(), ErrPowOfZero},
+		{`0.0^2`, Nil(), ErrPowOfZero},
 	} {
 		e, err := New(tc.s, nil)
 		if err != nil {
@@ -258,25 +269,37 @@ func TestOp(t *testing.T) {
 }
 
 func TestOpWithGetter(t *testing.T) {
-	getter := Getter(map[string]Var{
+	pool := MustNewPool(map[string]Func{
+		"contains": func(args ...Value) (Value, error) {
+			if err := ExpectNArg(len(args), 2); err != nil {
+				return Nil(), fmt.Errorf("expected number of arguments for function `contains' is %d, but got %d", 2, len(args))
+			}
+			if args[0].kind == KindString && args[1].kind == KindString {
+				return Bool(strings.Contains(args[0].String(), args[1].String())), nil
+			}
+			return Nil(), ErrTypeMismatchForOp
+		},
+	})
+	getter := Getter{
 		"a": String("u"),
 		"b": String("v"),
 		"c": String("w"),
 		"x": Int(1),
 		"y": Int(2),
 		"z": Int(0),
-	})
+	}
 	for i, tc := range []struct {
 		s      string
-		result Var
+		result Value
 		err    error
 	}{
 		{`a + b`, String("uv"), nil},
 		{`x + y`, Int(3), nil},
 
 		{`a + 1`, nilValue, ErrTypeMismatchForOp},
+		{`a > 1`, nilValue, ErrComparedTypesMismatch},
 	} {
-		e, err := New(tc.s, nil)
+		e, err := New(tc.s, pool)
 		if err != nil {
 			t.Errorf("%dth: invalid expression `%s'", i, tc.s)
 			continue

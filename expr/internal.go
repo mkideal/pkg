@@ -9,46 +9,52 @@ import (
 func intRawString(i int64) string     { return strconv.FormatInt(i, 10) }
 func floatRawString(f float64) string { return fmt.Sprintf("%f", f) }
 
-func stringAdd(s1, s2 Var) Var {
-	return Var{
+func stringAdd(s1, s2 Value) Value {
+	return Value{
 		kind:     KindString,
 		rawValue: s1.rawValue + s2.rawValue,
 	}
 }
 
-func intAdd(v1, v2 Var) (Var, error) { return Int(v1.intValue + v2.intValue), nil }
-func intSub(v1, v2 Var) (Var, error) { return Int(v1.intValue - v2.intValue), nil }
-func intMul(v1, v2 Var) (Var, error) { return Int(v1.intValue * v2.intValue), nil }
-func intQuo(v1, v2 Var) (Var, error) {
+func intAdd(v1, v2 Value) (Value, error) { return Int(v1.intValue + v2.intValue), nil }
+func intSub(v1, v2 Value) (Value, error) { return Int(v1.intValue - v2.intValue), nil }
+func intMul(v1, v2 Value) (Value, error) { return Int(v1.intValue * v2.intValue), nil }
+func intQuo(v1, v2 Value) (Value, error) {
 	if v2.intValue == 0 {
 		return Zero(), ErrDivideZero
 	}
 	return Int(v1.intValue / v2.intValue), nil
 }
-func intRem(v1, v2 Var) (Var, error) {
+func intRem(v1, v2 Value) (Value, error) {
 	if v2.intValue == 0 {
 		return Zero(), ErrDivideZero
 	}
 	return Int(v1.intValue % v2.intValue), nil
 }
-func intPow(v1, v2 Var) (Var, error) {
+func intPow(v1, v2 Value) (Value, error) {
+	if v1.intValue == 0 {
+		return Zero(), ErrPowOfZero
+	}
 	return Int(int64(math.Pow(float64(v1.intValue), float64(v2.intValue)))), nil
 }
 
-func floatAdd(v1, v2 Var) (Var, error) { return Float(v1.floatValue + v2.floatValue), nil }
-func floatSub(v1, v2 Var) (Var, error) { return Float(v1.floatValue - v2.floatValue), nil }
-func floatMul(v1, v2 Var) (Var, error) { return Float(v1.floatValue * v2.floatValue), nil }
-func floatQuo(v1, v2 Var) (Var, error) { return Float(v1.floatValue / v2.floatValue), nil }
-func floatRem(v1, v2 Var) (Var, error) {
+func floatAdd(v1, v2 Value) (Value, error) { return Float(v1.floatValue + v2.floatValue), nil }
+func floatSub(v1, v2 Value) (Value, error) { return Float(v1.floatValue - v2.floatValue), nil }
+func floatMul(v1, v2 Value) (Value, error) { return Float(v1.floatValue * v2.floatValue), nil }
+func floatQuo(v1, v2 Value) (Value, error) { return Float(v1.floatValue / v2.floatValue), nil }
+func floatRem(v1, v2 Value) (Value, error) {
 	return Float(math.Remainder(v1.floatValue, v2.floatValue)), nil
 }
-func floatPow(v1, v2 Var) (Var, error) {
+func floatPow(v1, v2 Value) (Value, error) {
+	if v1.floatValue == 0 {
+		return Zero(), ErrPowOfZero
+	}
 	return Float(math.Pow(v1.floatValue, v2.floatValue)), nil
 }
 
-type binaryOpFunc func(Var, Var) (Var, error)
+type binaryOpFunc func(Value, Value) (Value, error)
 
-func binaryOp(v1, v2 Var, iop, fop binaryOpFunc) (Var, error) {
+func binaryOp(v1, v2 Value, iop, fop binaryOpFunc) (Value, error) {
 	if v1.kind == KindString || v2.kind == KindString {
 		return Zero(), ErrTypeMismatchForOp
 	}
@@ -68,21 +74,21 @@ func binaryOp(v1, v2 Var, iop, fop binaryOpFunc) (Var, error) {
 	}
 }
 
-type compareFunc func(Var, Var) Var
+type compareFunc func(Value, Value) Value
 
-func stringEq(v1, v2 Var) Var { return Bool(v1.rawValue == v2.rawValue) }
-func stringGt(v1, v2 Var) Var { return Bool(v1.rawValue > v2.rawValue) }
-func stringGe(v1, v2 Var) Var { return Bool(v1.rawValue >= v2.rawValue) }
+func stringEq(v1, v2 Value) Value { return Bool(v1.rawValue == v2.rawValue) }
+func stringGt(v1, v2 Value) Value { return Bool(v1.rawValue > v2.rawValue) }
+func stringGe(v1, v2 Value) Value { return Bool(v1.rawValue >= v2.rawValue) }
 
-func intEq(v1, v2 Var) Var { return Bool(v1.intValue == v2.intValue) }
-func intGt(v1, v2 Var) Var { return Bool(v1.intValue > v2.intValue) }
-func intGe(v1, v2 Var) Var { return Bool(v1.intValue >= v2.intValue) }
+func intEq(v1, v2 Value) Value { return Bool(v1.intValue == v2.intValue) }
+func intGt(v1, v2 Value) Value { return Bool(v1.intValue > v2.intValue) }
+func intGe(v1, v2 Value) Value { return Bool(v1.intValue >= v2.intValue) }
 
-func floatEq(v1, v2 Var) Var { return Bool(v1.floatValue == v2.floatValue) }
-func floatGt(v1, v2 Var) Var { return Bool(v1.floatValue > v2.floatValue) }
-func floatGe(v1, v2 Var) Var { return Bool(v1.floatValue >= v2.floatValue) }
+func floatEq(v1, v2 Value) Value { return Bool(v1.floatValue == v2.floatValue) }
+func floatGt(v1, v2 Value) Value { return Bool(v1.floatValue > v2.floatValue) }
+func floatGe(v1, v2 Value) Value { return Bool(v1.floatValue >= v2.floatValue) }
 
-func compare(v1, v2 Var, scmp, icmp, fcmp compareFunc) (Var, error) {
+func compare(v1, v2 Value, scmp, icmp, fcmp compareFunc) (Value, error) {
 	switch v1.kind {
 	case KindString:
 		if v2.kind == KindString {

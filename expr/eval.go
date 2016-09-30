@@ -8,7 +8,7 @@ import (
 )
 
 // eval the expression
-func eval(e *Expr, getter VarGetter, node ast.Expr) (Var, error) {
+func eval(e *Expr, getter VarGetter, node ast.Expr) (Value, error) {
 	switch n := node.(type) {
 	case *ast.Ident:
 		if getter == nil {
@@ -48,7 +48,7 @@ func eval(e *Expr, getter VarGetter, node ast.Expr) (Var, error) {
 		return eval(e, getter, n.X)
 
 	case *ast.CallExpr:
-		args := make([]Var, 0, len(n.Args))
+		args := make([]Value, 0, len(n.Args))
 		for _, arg := range n.Args {
 			if val, err := eval(e, getter, arg); err != nil {
 				return Zero(), err

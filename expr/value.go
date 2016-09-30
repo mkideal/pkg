@@ -2,7 +2,6 @@ package expr
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 )
@@ -17,6 +16,7 @@ var (
 	ErrDivideZero            = errors.New("divide zero")
 	ErrPowOfZero             = errors.New("power of zero")
 	ErrComparedTypesMismatch = errors.New("compared types mismatch")
+	ErrBadArgumentsSize      = errors.New("bad arguments size")
 )
 
 type Kind int
@@ -29,44 +29,47 @@ const (
 )
 
 var (
-	nilValue = Var{kind: KindInvalid}
+	nilValue = Value{kind: KindInvalid}
 
-	varZero  = Var{kind: KindInt, rawValue: "0"}
-	varTrue  = Var{kind: KindInt, intValue: 1, rawValue: "true"}
-	varFalse = Var{kind: KindInt, intValue: 0, rawValue: "false"}
+	varZero  = Value{kind: KindInt, rawValue: "0"}
+	varTrue  = Value{kind: KindInt, intValue: 1, rawValue: "true"}
+	varFalse = Value{kind: KindInt, intValue: 0, rawValue: "false"}
 )
 
-func Nil() Var   { return nilValue }
-func Zero() Var  { return varZero }
-func True() Var  { return varTrue }
-func False() Var { return varFalse }
+func Nil() Value   { return nilValue }
+func Zero() Value  { return varZero }
+func True() Value  { return varTrue }
+func False() Value { return varFalse }
+func Equal(v1, v2 Value) bool {
+	eq, err := v1.Eq(v2)
+	return err == nil && eq.Bool()
+}
 
-func Bool(ok bool) Var {
+func Bool(ok bool) Value {
 	if ok {
 		return True()
 	}
 	return False()
 }
 
-func Int(i int64) Var     { return Var{kind: KindInt, intValue: i, rawValue: strconv.FormatInt(i, 10)} }
-func Float(f float64) Var { return Var{kind: KindFloat, floatValue: f, rawValue: fmt.Sprintf("%f", f)} }
-func String(s string) Var { return Var{kind: KindString, rawValue: s} }
+func Int(i int64) Value     { return Value{kind: KindInt, intValue: i, rawValue: intRawString(i)} }
+func Float(f float64) Value { return Value{kind: KindFloat, floatValue: f, rawValue: floatRawString(f)} }
+func String(s string) Value { return Value{kind: KindString, rawValue: s} }
 
-type Var struct {
-	name       string
+type Value struct {
 	kind       Kind
 	rawValue   string
 	intValue   int64
 	floatValue float64
 }
 
-func NewVar(name string, kind Kind) Var {
-	return Var{name: name, kind: kind}
+func NewValue(kind Kind) Value {
+	return Value{kind: kind}
 }
 
 var numberBases = []int{10, 16, 8}
 
-func (v Var) Set(s string) error {
+func (v *Value) Set(s string) error {
 	switch v.kind {
 	case KindString:
 		// donothing
@@ -95,22 +98,21 @@ func (v Var) Set(s string) error {
 	return nil
 }
 
-func (v Var) Name() string   { return v.name }
-func (v Var) Kind() Kind     { return v.kind }
-func (v Var) String() string { return v.rawValue }
-func (v Var) Int() int64 {
+func (v Value) Kind() Kind     { return v.kind }
+func (v Value) String() string { return v.rawValue }
+func (v Value) Int() int64 {
 	if v.kind == KindFloat {
 		return int64(v.floatValue)
 	}
 	return v.intValue
 }
-func (v Var) Float() float64 {
+func (v Value) Float() float64 {
 	if v.kind == KindInt {
 		return float64(v.intValue)
 	}
 	return v.floatValue
 }
-func (v Var) Bool() bool {
+func (v Value) Bool() bool {
 	switch v.kind {
 	case KindString:
 		return v.rawValue != ""
@@ -122,24 +124,24 @@ func (v Var) Bool() bool {
 	return false
 }
 
-func (v Var) Add(v2 Var) (Var, error) {
+func (v Value) Add(v2 Value) (Value, error) {
 	if v.kind == KindString && v2.kind == KindString {
 		return stringAdd(v, v2), nil
 	}
 	return binaryOp(v, v2, intAdd, floatAdd)
 }
 
-func (v Var) Sub(v2 Var) (Var, error) { return binaryOp(v, v2, intSub, floatSub) }
-func (v Var) Mul(v2 Var) (Var, error) { return binaryOp(v, v2, intMul, floatMul) }
-func (v Var) Quo(v2 Var) (Var, error) { return binaryOp(v, v2, intQuo, floatQuo) }
-func (v Var) Rem(v2 Var) (Var, error) { return binaryOp(v, v2, intRem, floatRem) }
-func (v Var) Pow(v2 Var) (Var, error) { return binaryOp(v, v2, intPow, floatPow) }
-func (v Var) And(v2 Var) Var          { return Bool(v.Bool() && v2.Bool()) }
-func (v Var) Or(v2 Var) Var           { return Bool(v.Bool() || v2.Bool()) }
-func (v Var) Not() Var                { return Bool(!v.Bool()) }
-func (v Var) Eq(v2 Var) (Var, error)  { return compare(v, v2, stringEq, intEq, floatEq) }
+func (v Value) Sub(v2 Value) (Value, error) { return binaryOp(v, v2, intSub, floatSub) }
+func (v Value) Mul(v2 Value) (Value, error) { return binaryOp(v, v2, intMul, floatMul) }
+func (v Value) Quo(v2 Value) (Value, error) { return binaryOp(v, v2, intQuo, floatQuo) }
+func (v Value) Rem(v2 Value) (Value, error) { return binaryOp(v, v2, intRem, floatRem) }
+func (v Value) Pow(v2 Value) (Value, error) { return binaryOp(v, v2, intPow, floatPow) }
+func (v Value) And(v2 Value) Value          { return Bool(v.Bool() && v2.Bool()) }
+func (v Value) Or(v2 Value) Value           { return Bool(v.Bool() || v2.Bool()) }
+func (v Value) Not() Value                  { return Bool(!v.Bool()) }
+func (v Value) Eq(v2 Value) (Value, error)  { return compare(v, v2, stringEq, intEq, floatEq) }
 
-func (v Var) Neq(v2 Var) (Var, error) {
+func (v Value) Neq(v2 Value) (Value, error) {
 	result, err := v.Eq(v2)
 	if err == nil {
 		result = result.Not()
@@ -147,14 +149,21 @@ func (v Var) Neq(v2 Var) (Var, error) {
 	return result, err
 }
 
-func (v Var) Gt(v2 Var) (Var, error) { return compare(v, v2, stringGt, intGt, floatGt) }
-func (v Var) Ge(v2 Var) (Var, error) { return compare(v, v2, stringGe, intGe, floatGe) }
-func (v Var) Lt(v2 Var) (Var, error) { return v2.Gt(v) }
-func (v Var) Le(v2 Var) (Var, error) { return v2.Ge(v) }
+func (v Value) Gt(v2 Value) (Value, error) { return compare(v, v2, stringGt, intGt, floatGt) }
+func (v Value) Ge(v2 Value) (Value, error) { return compare(v, v2, stringGe, intGe, floatGe) }
+func (v Value) Lt(v2 Value) (Value, error) { return v2.Gt(v) }
+func (v Value) Le(v2 Value) (Value, error) { return v2.Ge(v) }
 
-func (v Var) Contains(v2 Var) Var {
+func (v Value) Contains(v2 Value) Value {
 	if v.kind == KindString && v2.kind == KindString {
 		return Bool(strings.Contains(v.rawValue, v2.rawValue))
 	}
 	return False()
+}
+
+func ExpectNArg(got, want int) error {
+	if got != want {
+		return ErrBadArgumentsSize
+	}
+	return nil
 }
