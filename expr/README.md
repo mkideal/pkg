@@ -1,16 +1,20 @@
-# expr [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/mkideal/pkg/master/LICENSE)
+expr [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/mkideal/pkg/master/LICENSE)
+===================================================================================================================================================
 
-## License
+License
+-------
 
 [The MIT License (MIT)](https://raw.githubusercontent.com/mkideal/pkg/master/LICENSE)
 
-## Install
+Install
+-------
 
 ```shell
-go get github.com/pkg/expr
+go get github.com/mkideal/pkg/expr
 ```
 
-## Expr
+Expr
+----
 
 `Expr` is top-level object of `expr` package.
 
@@ -30,11 +34,12 @@ example:
 
 ```go
 e, _ := expr.New("x+1", nil)
-getter := expr.VarGetter(map[string]float64{"x":1})
+getter := expr.VarGetter(map[string]float64{"x": 1})
 result, _ := e.Eval(getter) // result: 2
 ```
 
-## VarGetter
+VarGetter
+---------
 
 `VarGetter` define an interface for getting variable by name.
 
@@ -49,7 +54,8 @@ type VarGetter interface {
 type Getter map[string]float64
 ```
 
-## Func
+Func
+----
 
 `Func` define function type used in expression.
 
@@ -59,12 +65,13 @@ type Func func(...float64) (float64, error)
 
 builtin functions:
 
-* min(arg1[, arg2, ...])
-* max(arg1[, arg2, ...])
-* rand([arg1[, arg2]])
-* iff(ok, x, y) <==> ok ? x : y
+-	min(arg1[, arg2, ...])
+-	max(arg1[, arg2, ...])
+-	rand([arg1[, arg2]])
+-	iff(ok, x, y) <==> ok ? x : y
 
-## Pool
+Pool
+----
 
 `Pool` used for cache expression objects.
 
@@ -72,6 +79,7 @@ builtin functions:
 func NewPool(factories ...map[string]Func) (*Pool, error)
 ```
 
-## External
+External
+--------
 
-* [exp](https://github.com/mkideal/tools/tree/master/exp) - `a command line app for evaluate expression`
+-	[exp](https://github.com/mkideal/tools/tree/master/exp) - `a command line app for evaluate expression`
