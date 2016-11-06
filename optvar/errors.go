@@ -2,6 +2,7 @@ package optvar
 
 import (
 	"errors"
+	"reflect"
 )
 
 var (
@@ -26,3 +27,11 @@ func getError(required bool, src *Source, name string) error {
 	}
 	return nil
 }
+
+type UnsupportedTypeErrror struct {
+	kind reflect.Kind
+}
+
+func (e UnsupportedTypeErrror) Error() string { return "unsupported type: " + e.kind.String() }
+
+func UnsupportedType(kind reflect.Kind) error { return UnsupportedTypeErrror{kind} }
