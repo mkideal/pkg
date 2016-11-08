@@ -7,8 +7,9 @@ import (
 )
 
 var (
-	ErrFieldNotFound    = errors.New("field not found")
-	ErrUnexpectedLength = errors.New("unexpected length")
+	ErrFieldNotFound       = errors.New("field not found")
+	ErrUnexpectedLength    = errors.New("unexpected length")
+	ErrViewRefFieldMissing = errors.New("view ref field missing")
 )
 
 func ToString(v interface{}) string {

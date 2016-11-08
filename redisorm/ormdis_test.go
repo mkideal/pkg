@@ -1,15 +1,13 @@
-package orm_test
+package orm
 
 import (
 	"errors"
+	"strconv"
 	"testing"
 
 	"github.com/mkideal/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"live_common_lib/qqredis/orm"
-	"live_common_lib/typeconv"
 )
 
 var (
@@ -33,7 +31,7 @@ func (t mockTable) set(field string, value interface{}) {
 
 func (t mockTable) get(field string) (string, bool) {
 	value, found := t[field]
-	return orm.ToString(value), found
+	return ToString(value), found
 }
 
 func (t mockTable) del(field string) bool {
@@ -62,12 +60,12 @@ func (c *mockRedisclient) HsetMulti(args ...interface{}) (string, error) {
 	if len(args)%2 == 0 || len(args) == 1 {
 		return "", errArgumentsLength
 	}
-	tableName := orm.ToString(args[0])
+	tableName := ToString(args[0])
 	table := c.getTable(tableName)
 	for i := 1; i+1 < len(args); i += 2 {
-		table.set(orm.ToString(args[i]), args[i+1])
+		table.set(ToString(args[i]), args[i+1])
 	}
-	return orm.ToString(len(args) / 2), nil
+	return ToString(len(args) / 2), nil
 }
 
 func (c *mockRedisclient) Hmgetstrings(args ...interface{}) (int, []*string, error) {
@@ -75,11 +73,11 @@ func (c *mockRedisclient) Hmgetstrings(args ...interface{}) (int, []*string, err
 		return 0, nil, errArgumentsLength
 	}
 	values := make([]*string, 0, len(args)-1)
-	tableName := orm.ToString(args[0])
+	tableName := ToString(args[0])
 	table := c.getTable(tableName)
 	n := 0
 	for i := 1; i < len(args); i++ {
-		field := orm.ToString(args[i])
+		field := ToString(args[i])
 		value, found := table.get(field)
 		if found {
 			values = append(values, &value)
@@ -95,24 +93,25 @@ func (c *mockRedisclient) Hdel(args ...interface{}) (string, error) {
 	if len(args) < 2 {
 		return "0", errArgumentsLength
 	}
-	tableName := orm.ToString(args[0])
+	tableName := ToString(args[0])
 	table := c.getTable(tableName)
 	n := 0
 	for i := 1; i < len(args); i++ {
-		field := orm.ToString(args[i])
+		field := ToString(args[i])
 		if table.del(field) {
 			n++
 		}
 	}
-	return orm.ToString(n), nil
+	return ToString(n), nil
 }
 
 func TestOrm(t *testing.T) {
 	defer log.Uninit(log.InitConsole(log.LvFATAL))
 
-	eng := orm.NewEngine("test", redisc)
+	engine := NewEngine("test", redisc)
+	eng := engine.Core()
 	eng.SetErrorHandler(func(action string, err error) error {
-		log.Printf(orm.ErrorHnadlerDepth, log.LvWARN, "<%s>: %v", action, err)
+		log.Printf(ErrorHnadlerDepth, log.LvWARN, "<%s>: %v", action, err)
 		return err
 	})
 
@@ -158,7 +157,7 @@ func TestOrm(t *testing.T) {
 
 	// Find
 	tf := newUserSlice(len(users))
-	eng.Find(userMeta, tf, orm.Int64Keys(keys))
+	eng.Find(userMeta, Int64Keys(keys), tf)
 	require.Equal(t, len(users), len(tf.data))
 	for i := 0; i < len(users); i++ {
 		assert.Equal(t, users[i].Id, tf.data[i].Id)
@@ -190,9 +189,11 @@ func newUserSlice(cap int) *userSlice {
 	}
 }
 
-func (us *userSlice) New(key interface{}) orm.FieldSetter {
-	us.data = append(us.data, User{Id: key.(int64)})
-	return &us.data[len(us.data)-1]
+func (us *userSlice) New(index int, key interface{}) FieldSetter {
+	for len(us.data) <= index {
+		us.data = append(us.data, User{Id: key.(int64)})
+	}
+	return &us.data[index]
 }
 
 type User struct {
@@ -201,8 +202,8 @@ type User struct {
 	Age  int
 }
 
-func (u User) Meta() orm.TableMeta { return userMeta }
-func (u User) Key() interface{}    { return u.Id }
+func (u User) Meta() TableMeta  { return userMeta }
+func (u User) Key() interface{} { return u.Id }
 
 func (u User) GetField(field string) (interface{}, bool) {
 	switch field {
@@ -220,9 +221,49 @@ func (u *User) SetField(field string, value string) error {
 	case "name":
 		u.Name = value
 	case "age":
-		return typeconv.SetIntFromStr(&u.Age, value)
+		return setInt(&u.Age, value)
 	default:
 		return errUnknownField
 	}
 	return nil
+}
+
+func setInt(ptr *int, value string) error {
+	i, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return err
+	}
+	*ptr = int(i)
+	return nil
+}
+
+type ViewUserName struct {
+	Name string
+}
+
+func (ViewUserName) Table() string         { return userMeta.Name() }
+func (ViewUserName) Fields() FieldList     { return Field("name") }
+func (ViewUserName) Refs() map[string]View { return nil }
+
+func TestOrmView(t *testing.T) {
+	defer log.Uninit(log.InitConsole(log.LvFATAL))
+
+	engine := NewEngine("test", redisc)
+	eng := engine.Core()
+	eng.SetErrorHandler(func(action string, err error) error {
+		log.Printf(ErrorHnadlerDepth, log.LvWARN, "<%s>: %v", action, err)
+		return err
+	})
+
+	// Insert
+	inserted := &User{Id: 1, Name: "test1", Age: 10}
+	eng.Insert(inserted)
+	t.Logf("insert 1: %v", redisc.tables)
+
+	// LoadView
+	view := ViewUserName{}
+	fs := newUserSlice(1)
+	keys := Int64Keys([]int64{inserted.Id})
+	eng.LoadView(view, keys, fs)
+	t.Logf("insert 1: %v", fs)
 }

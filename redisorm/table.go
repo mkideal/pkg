@@ -48,12 +48,6 @@ type FieldSlice []string
 func (fs FieldSlice) Len() int           { return len(fs) }
 func (fs FieldSlice) Field(i int) string { return fs[i] }
 
-type Index interface {
-	Name() string
-	RefTable() string
-	Update(member interface{}, score int64) error
-}
-
 //-----------------
 // Basic interface
 //-----------------
@@ -98,6 +92,6 @@ type Table interface {
 	FieldSetter
 }
 
-type FieldSetterFactory interface {
-	New(key interface{}) FieldSetter
+type FieldSetterList interface {
+	New(index int, key interface{}) FieldSetter
 }
