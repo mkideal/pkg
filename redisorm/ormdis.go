@@ -8,7 +8,7 @@ type RedisClient interface {
 
 type ErrorHandler func(action string, err error) error
 
-const ErrorHnadlerDepth = 4
+const ErrorHandlerDepth = 4
 
 type Engine struct {
 	*coreEngine

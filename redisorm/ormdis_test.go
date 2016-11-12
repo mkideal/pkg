@@ -111,7 +111,7 @@ func TestOrm(t *testing.T) {
 	engine := NewEngine("test", redisc)
 	eng := engine.Core()
 	eng.SetErrorHandler(func(action string, err error) error {
-		log.Printf(ErrorHnadlerDepth, log.LvWARN, "<%s>: %v", action, err)
+		log.Printf(ErrorHandlerDepth, log.LvWARN, "<%s>: %v", action, err)
 		return err
 	})
 
@@ -237,6 +237,15 @@ func setInt(ptr *int, value string) error {
 	return nil
 }
 
+func setInt64(ptr *int64, value string) error {
+	i, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return err
+	}
+	*ptr = i
+	return nil
+}
+
 type ViewUserName struct {
 	Name string
 }
@@ -251,7 +260,7 @@ func TestOrmView(t *testing.T) {
 	engine := NewEngine("test", redisc)
 	eng := engine.Core()
 	eng.SetErrorHandler(func(action string, err error) error {
-		log.Printf(ErrorHnadlerDepth, log.LvWARN, "<%s>: %v", action, err)
+		log.Printf(ErrorHandlerDepth, log.LvWARN, "<%s>: %v", action, err)
 		return err
 	})
 
