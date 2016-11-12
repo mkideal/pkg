@@ -6,35 +6,26 @@ type View interface {
 	Refs() map[string]View
 }
 
-func (eng *coreEngine) LoadView(view View, keys KeyList, setters FieldSetterList) error {
-	return eng.recursivelyLoadView(view, keys, setters)
-}
-
-func (eng *coreEngine) recursivelyLoadView(view View, keys KeyList, setters FieldSetterList) error {
-	keysGroup, err := eng.loadView(view, keys, setters)
+func (eng *coreEngine) recursivelyLoadView(view View, keys KeyList, setters FieldSetterList) (string, error) {
+	keysGroup, action, err := eng.findByFields(view.Table(), keys, setters, view.Fields(), view.Refs())
 	if err != nil {
-		return err
+		return action, err
 	}
 	refs := view.Refs()
 	if refs == nil {
-		return nil
+		return "", nil
 	}
 	if len(keysGroup) != len(refs) {
-		return ErrUnexpectedLength
+		return action, ErrUnexpectedLength
 	}
 	for field, ref := range refs {
 		if tmpKeys, ok := keysGroup[field]; ok {
-			if err := eng.recursivelyLoadView(ref, tmpKeys, setters); err != nil {
-				return err
+			if action, err := eng.recursivelyLoadView(ref, tmpKeys, setters); err != nil {
+				return action, err
 			}
 		} else {
-			return ErrViewRefFieldMissing
+			return action, ErrViewRefFieldMissing
 		}
 	}
-	return nil
-}
-
-func (eng *coreEngine) loadView(view View, keys KeyList, setters FieldSetterList) (map[string]KeyList, error) {
-	eng.findByFields(view.Table(), keys, setters, view.Fields(), view.Refs())
-	return nil, nil
+	return "", nil
 }

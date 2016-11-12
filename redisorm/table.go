@@ -57,7 +57,7 @@ type FieldGetter interface {
 }
 
 type FieldSetter interface {
-	SetField(field string, value string) error
+	SetField(field, value string) error
 }
 
 // TableMeta holds table meta information
@@ -93,5 +93,5 @@ type Table interface {
 }
 
 type FieldSetterList interface {
-	New(index int, key interface{}) FieldSetter
+	New(table string, index int, key interface{}) FieldSetter
 }

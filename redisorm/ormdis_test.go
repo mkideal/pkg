@@ -189,7 +189,7 @@ func newUserSlice(cap int) *userSlice {
 	}
 }
 
-func (us *userSlice) New(index int, key interface{}) FieldSetter {
+func (us *userSlice) New(table string, index int, key interface{}) FieldSetter {
 	for len(us.data) <= index {
 		us.data = append(us.data, User{Id: key.(int64)})
 	}

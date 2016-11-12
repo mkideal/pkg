@@ -139,7 +139,7 @@ var _view_prouct_detail_fields = []string{
 }
 
 func (ViewProuctDetail) Table() string     { return productMeta.Name() }
-func (ViewProuctDetail) Fields() FieldList { return _view_prouct_detail_fields }
+func (ViewProuctDetail) Fields() FieldList { return FieldSlice(_view_prouct_detail_fields) }
 
 func Example_Basic() {
 	defer log.Uninit(log.InitConsole(log.LvFATAL))
