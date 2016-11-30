@@ -41,7 +41,7 @@ func GetStyleByName(stylename string) NameStyle {
 	}
 }
 
-// detect name style
+// Style detects name style
 // return NATIVE if style is unknown
 // return UNDER_SCORE if s contain _
 // return LOWER_CAMEL if first charactor is lowercase
@@ -161,8 +161,8 @@ func split(s string) ([]string, bool) {
 					ret = append(ret, word.String())
 					word.Reset()
 				}
-				word.WriteByte(b)
 			}
+			word.WriteByte(b)
 			ccase = UPPER_CASE
 		} else if b >= 'a' && b <= 'z' {
 			word.WriteByte(b)
