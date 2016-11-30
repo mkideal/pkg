@@ -36,6 +36,10 @@ func reflectTable(v interface{}) (Table, error) {
 	return nil, nil
 }
 
+func reflectReadonlyTable(v interface{}) (ReadonlyTable, error) {
+	return nil, nil
+}
+
 func extendReadonlyTable(rotable ReadonlyTable) (Table, error) {
 	return nil, nil
 }
