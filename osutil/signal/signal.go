@@ -42,3 +42,10 @@ func Listen() {
 		}
 	}
 }
+
+func Wait(sig os.Signal) {
+	Register(sig, func(os.Signal) bool {
+		return true
+	})
+	Listen()
+}
