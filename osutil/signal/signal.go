@@ -22,10 +22,14 @@ func Register(sig os.Signal, handler SignalHandler) {
 	} else {
 		handlers[sig] = []SignalHandler{handler}
 	}
-	signal.Notify(sigChan, sig)
 }
 
 func Listen() {
+	signals := make([]os.Signal, 0, len(handlers))
+	for sig, _ := range handlers {
+		signals = append(signals, sig)
+	}
+	signal.Notify(sigChan, signals...)
 	for {
 		select {
 		case sig := <-sigChan:

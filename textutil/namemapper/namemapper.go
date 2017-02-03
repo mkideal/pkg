@@ -120,7 +120,7 @@ func LowerCamel(s string) string {
 	}
 	for i := range fields {
 		if i == 0 {
-			fields[0] = lowerFirst(fields[0])
+			fields[0] = strings.ToLower(fields[0])
 		} else {
 			fields[i] = strings.Title(fields[i])
 		}
@@ -134,7 +134,7 @@ func UnderScore(s string) string {
 		return s
 	}
 	for i := range fields {
-		fields[i] = lowerFirst(fields[i])
+		fields[i] = strings.ToLower(fields[i])
 	}
 	return strings.Join(fields, "_")
 }
@@ -183,16 +183,4 @@ func split(s string) ([]string, bool) {
 		}
 	}
 	return ret, true
-}
-
-func lowerFirst(s string) string {
-	if s == "" {
-		return s
-	}
-	firstChar := s[0]
-	if firstChar >= 'A' && firstChar <= 'Z' {
-		firstChar = firstChar + 'a' - 'A'
-		s = string(append([]byte{firstChar}, s[1:]...))
-	}
-	return s
 }
