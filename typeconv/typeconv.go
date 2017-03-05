@@ -1,6 +1,7 @@
 package typeconv
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 )
@@ -144,4 +145,8 @@ func String2Float64(v *float64, s string) error {
 		*v = f
 	}
 	return err
+}
+
+func String2Object(obj interface{}, s string) error {
+	return json.Unmarshal([]byte(s), obj)
 }
