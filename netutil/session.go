@@ -37,7 +37,7 @@ type WSession struct {
 
 func NewWSession(id string, conn net.Conn, conWriteSize int) *WSession {
 	if conWriteSize <= 0 {
-		conWriteSize = 4096
+		conWriteSize = 64
 	}
 	return &WSession{
 		conn:      conn,

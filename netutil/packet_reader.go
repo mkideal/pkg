@@ -64,6 +64,6 @@ func (r *packetReader) ReadPacket() (int, error) {
 		return total, err
 	}
 	log.Debug("read bytes number: %d", total)
-	r.packetHandler(r.buf[:length])
+	r.packetHandler(r.buf)
 	return total, nil
 }

@@ -2,8 +2,8 @@ package discovery
 
 import (
 	"errors"
-	"math/rand"
 
+	"github.com/mkideal/pkg/math/random"
 	"github.com/mkideal/pkg/netutil"
 	"google.golang.org/grpc"
 )
@@ -78,7 +78,7 @@ func (cluster *Cluster) Run() error {
 				if len(cluster.addrs) == 0 {
 					resp.waitCh <- errNoAddr
 				} else {
-					resp.Address = cluster.addrs[rand.Intn(len(cluster.addrs))]
+					resp.Address = cluster.addrs[random.Intn(len(cluster.addrs), nil)]
 					resp.waitCh <- nil
 				}
 			case packet := <-cluster.broadcastCh:
