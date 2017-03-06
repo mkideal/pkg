@@ -1,11 +1,12 @@
 package netutil
 
 import (
+	"crypto/tls"
 	"net"
+	"net/http"
 	"time"
 
 	"golang.org/x/net/websocket"
-	"net/http"
 )
 
 type TCPKeepAliveListener struct {
@@ -77,8 +78,17 @@ func serve(listener net.Listener, handler func(net.Conn), async bool) error {
 	return nil
 }
 
-func ListenAndServeTCP(addrStr string, handler func(net.Conn), async bool) error {
-	listener, err := listenTCP(addrStr)
+func ListenAndServeTCP(addrStr string, handler func(net.Conn), async bool, certs ...tls.Certificate) error {
+	var (
+		listener net.Listener
+		err      error
+	)
+	if len(certs) > 0 {
+		config := &tls.Config{Certificates: certs}
+		listener, err = tls.Listen("tcp", addrStr, config)
+	} else {
+		listener, err = listenTCP(addrStr)
+	}
 	if err == nil {
 		err = serve(listener, handler, async)
 	}

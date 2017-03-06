@@ -1,10 +1,13 @@
 package gateway
 
 import (
+	"crypto/md5"
+	"crypto/tls"
 	"errors"
 	"net"
 	"sync"
 
+	"github.com/mkideal/log"
 	"github.com/mkideal/pkg/netutil"
 	"github.com/mkideal/pkg/netutil/protocol"
 )
@@ -29,6 +32,8 @@ type Config struct {
 	Protocol     string // websocket or tcp
 	Path         string // URL path for websocket protocol
 	ConWriteSize int
+	KeyFile      string
+	CertFile     string
 }
 
 type Gate struct {
@@ -51,10 +56,22 @@ func New(cfg Config, newUser func() User) *Gate {
 }
 
 func (gate *Gate) Run(async bool) error {
-	var err error
+	var (
+		cert tls.Certificate
+		err  error
+	)
+	if gate.config.KeyFile != "" {
+		cert, err = tls.LoadX509KeyPair(gate.config.CertFile, gate.config.KeyFile)
+		if err != nil {
+			return err
+		}
+		for _, certBytes := range cert.Certificate {
+			log.Info("certBytes.length=%d, md5=%x", len(certBytes), md5.Sum(certBytes))
+		}
+	}
 	switch gate.config.Protocol {
 	case protocol.TCP:
-		err = netutil.ListenAndServeTCP(gate.config.Addr, gate.handleConn, async)
+		err = netutil.ListenAndServeTCP(gate.config.Addr, gate.handleConn, async, cert)
 	case protocol.Websocket:
 		err = netutil.ListenAndServeWebsocket(gate.config.Addr, gate.config.Path, gate.handleConn, async)
 	default:
@@ -93,6 +110,12 @@ func (gate *Gate) AuthorizedUser(user User) {
 	}
 	gate.users[id] = user
 	user.SetAuthorized(true)
+}
+
+func (gate *Gate) RemoveUser(uid int64) {
+	gate.locker.Lock()
+	defer gate.locker.Unlock()
+	delete(gate.users, uid)
 }
 
 type UserVisitor func(User) (_break bool)

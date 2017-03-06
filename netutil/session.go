@@ -25,6 +25,15 @@ type Session interface {
 	Quit()
 }
 
+type nullSession struct{}
+
+var NullSession = nullSession{}
+
+func (session nullSession) Id() string         { return "" }
+func (session nullSession) Send(Packet)        {}
+func (session nullSession) Run(func(), func()) {}
+func (session nullSession) Quit()              {}
+
 // Write-only Session
 type WSession struct {
 	conn   net.Conn
