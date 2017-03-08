@@ -155,3 +155,10 @@ func (gate *Gate) Send(user User, packet netutil.Packet) {
 		}
 	}
 }
+
+func (gate *Gate) GetUser(uid int64) (User, bool) {
+	gate.locker.RLock()
+	defer gate.locker.RUnlock()
+	user, ok := gate.users[uid]
+	return user, ok
+}

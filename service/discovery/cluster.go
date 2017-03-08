@@ -44,6 +44,7 @@ type Cluster struct {
 	addrs       []grpc.Address
 	getCh       chan *GetResponse
 	broadcastCh chan netutil.Packet
+	quitCh      chan struct{}
 
 	sessions map[string]netutil.Session
 }
@@ -54,6 +55,7 @@ func NewCluster(serviceName string, balancer grpc.Balancer, opts ...ClusterOptio
 		balancer:    balancer,
 		getCh:       make(chan *GetResponse, 1024),
 		broadcastCh: make(chan netutil.Packet, 1024),
+		quitCh:      make(chan struct{}),
 		sessions:    make(map[string]netutil.Session),
 	}
 	for _, opt := range opts {
@@ -85,10 +87,16 @@ func (cluster *Cluster) Run() error {
 				for _, session := range cluster.sessions {
 					session.Send(packet)
 				}
+			case <-cluster.quitCh:
+				return
 			}
 		}
 	}()
 	return nil
+}
+
+func (cluster *Cluster) Quit() {
+	cluster.quitCh <- struct{}{}
 }
 
 func (cluster *Cluster) Get(req *GetRequest) *GetResponse {
@@ -110,7 +118,7 @@ func (cluster *Cluster) updateSessions() {
 	open := make(map[string]bool)
 	for _, addr := range cluster.addrs {
 		open[addr.Addr] = true
-		if _, exist := cluster.sessions[addr.Addr]; !exist {
+		if oldSession, exist := cluster.sessions[addr.Addr]; !exist || oldSession.Closed() {
 			cluster.newSession(addr.Addr)
 		}
 	}
@@ -130,4 +138,5 @@ func (cluster *Cluster) newSession(addr string) {
 		return
 	}
 	cluster.sessions[addr] = session
+	go session.Run(nil, nil)
 }

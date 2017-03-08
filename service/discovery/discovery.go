@@ -65,7 +65,7 @@ func (dc *Discovery) Unregister(service string, addr string) error {
 }
 
 func (dc *Discovery) Dial(service string) (*grpc.ClientConn, error) {
-	b := grpc.RoundRobin(&etcdnaming.GRPCResolver{Client: dc.client})
+	b := dc.NewBalancer()
 	conn, err := grpc.Dial(service, grpc.WithBalancer(b), grpc.WithInsecure())
 	if err != nil {
 		err = grpcDialError{service: service, err: err}

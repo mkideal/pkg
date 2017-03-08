@@ -20,6 +20,7 @@ func (p BytesPacket) Bytes() []byte { return []byte(p) }
 
 type Session interface {
 	Id() string
+	Closed() bool
 	Send(Packet)
 	Run(onNewSession, onQuitSession func())
 	Quit()
@@ -57,6 +58,7 @@ func NewWSession(id string, conn net.Conn, conWriteSize int) *WSession {
 }
 
 func (ws *WSession) Id() string      { return ws.id }
+func (ws *WSession) Closed() bool    { return ws.getClosed() }
 func (ws *WSession) setClosed()      { atomic.StoreInt32(&ws.closed, 1) }
 func (ws *WSession) getClosed() bool { return atomic.LoadInt32(&ws.closed) == 1 }
 
