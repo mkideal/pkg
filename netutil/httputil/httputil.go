@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"errors"
+	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/mkideal/pkg/option"
@@ -96,6 +98,48 @@ func getproxy(req *http.Request) []string {
 		return strings.Split(ips, ",")
 	}
 	return []string{}
+}
+
+type Result struct {
+	Response   *http.Response
+	StatusCode int
+	Data       []byte
+	Error      error
+}
+
+func (result Result) Ok() bool { return result.StatusCode == http.StatusOK }
+func (result Result) Status() string {
+	if result.Response == nil {
+		if result.Error != nil {
+			return result.Error.Error()
+		}
+		return ""
+	}
+	return result.Response.Status
+}
+
+func Get(url string) Result {
+	resp, err := http.Get(url)
+	return readResultFromResponse(resp, err)
+}
+
+func PostForm(url string, values url.Values) Result {
+	resp, err := http.PostForm(url, values)
+	return readResultFromResponse(resp, err)
+}
+
+func readResultFromResponse(resp *http.Response, err error) Result {
+	result := Result{
+		Response: resp,
+		Error:    err,
+	}
+	if err != nil {
+		return result
+	}
+	result.StatusCode = resp.StatusCode
+	defer resp.Body.Close()
+	result.Data, result.Error = ioutil.ReadAll(resp.Body)
+	return result
 }
 
 func Response(w http.ResponseWriter, status int, acceptType string, value interface{}, debug ...bool) error {
