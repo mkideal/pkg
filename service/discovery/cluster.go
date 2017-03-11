@@ -80,6 +80,7 @@ func (cluster *Cluster) Run() error {
 				if len(cluster.addrs) == 0 {
 					resp.waitCh <- errNoAddr
 				} else {
+					// TODO: random select addr. is this okay?
 					resp.Address = cluster.addrs[random.Intn(len(cluster.addrs), nil)]
 					resp.waitCh <- nil
 				}
