@@ -2,10 +2,15 @@ package netutil
 
 import (
 	"encoding/binary"
+	"errors"
 	"net"
 	"time"
 
 	"github.com/mkideal/log"
+)
+
+var (
+	errLengthTooBig = errors.New("length too big")
 )
 
 type PacketHandler func(b []byte)
@@ -36,7 +41,10 @@ func NewPacketReader(conn net.Conn, packetHandler PacketHandler) PacketReader {
 func (r *packetReader) Conn() net.Conn             { return r.conn }
 func (r *packetReader) SetTimeout(d time.Duration) { r.timeout = d }
 
-const LengthNeedSize = 4
+const (
+	LengthNeedSize  = 4
+	MaxPacketLength = 4 * 1024 * 1024 // 4M
+)
 
 func (r *packetReader) ReadPacket() (int, error) {
 	total := 0
@@ -52,7 +60,10 @@ func (r *packetReader) ReadPacket() (int, error) {
 		return total, err
 	}
 	length := binary.BigEndian.Uint32(r.byte1[:])
-	log.Trace("packet length: %d", length)
+	log.Trace("binary BigEndian decode %v as uint32 result: %d", r.byte1[:], length)
+	if length > MaxPacketLength {
+		return total, errLengthTooBig
+	}
 	// read packet body
 	if len(r.buf) < int(length) {
 		r.buf = make([]byte, length)

@@ -2,7 +2,6 @@ package validator
 
 import (
 	"errors"
-	"regexp"
 )
 
 type Validator interface {
@@ -16,6 +15,11 @@ func (v ValidatorFunc) Validate() error { return v() }
 
 // ValidatorList holds n Validators, and implements Validator interface too
 type ValidatorList []Validator
+
+func NewSet() *ValidatorList {
+	set := ValidatorList(make([]Validator, 0))
+	return &set
+}
 
 func (v ValidatorList) Validate() error {
 	for _, x := range v {
@@ -55,10 +59,4 @@ func (v boolValidator) Validate() error {
 func Require(val bool, msg string) *ValidatorList {
 	v := new(ValidatorList)
 	return v.AndRequire(val, msg)
-}
-
-var emailRegexp = regexp.MustCompilePOSIX("^[A-Za-z0-9\\u4e00-\\u9fa5]+@[a-zA-Z0-9_-]+(\\.[a-zA-Z0-9_-]+)+$")
-
-func IsValidEmail(email string) bool {
-	return emailRegexp.MatchString(email)
 }
