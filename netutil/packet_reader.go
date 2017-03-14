@@ -23,6 +23,7 @@ type PacketReader interface {
 }
 
 type packetReader struct {
+	id            string
 	conn          net.Conn
 	timeout       time.Duration
 	buf           []byte
@@ -33,6 +34,7 @@ type packetReader struct {
 // NewPacketReader creates a PacketReader with net.Conn and PacketHandler
 func NewPacketReader(conn net.Conn, packetHandler PacketHandler) PacketReader {
 	return &packetReader{
+		id:            conn.RemoteAddr().String(),
 		conn:          conn,
 		packetHandler: packetHandler,
 	}
@@ -56,25 +58,26 @@ func (r *packetReader) ReadPacket() (int, error) {
 	n, err := r.conn.Read(r.byte1[:])
 	total += n
 	if err != nil {
-		log.Info("read error: %v", err)
+		log.Info("%s: read error: %v", r.id, err)
 		return total, err
 	}
 	length := binary.BigEndian.Uint32(r.byte1[:])
-	log.Trace("binary BigEndian decode %v as uint32 result: %d", r.byte1[:], length)
+	log.Trace("%s: binary BigEndian decode %v as uint32 result: %d", r.id, r.byte1[:], length)
 	if length > MaxPacketLength {
+		log.Info("%s: length %d too big", r.id, length)
 		return total, errLengthTooBig
 	}
 	// read packet body
 	if len(r.buf) < int(length) {
 		r.buf = make([]byte, length)
 	}
-	n, err = r.conn.Read(r.buf)
+	n, err = r.conn.Read(r.buf[:length])
 	total += n
 	if err != nil {
-		log.Info("read error: %v", err)
+		log.Info("%s: read error: %v", r.id, err)
 		return total, err
 	}
-	log.Debug("read bytes number: %d", total)
+	log.Debug("%s: read bytes number: %d", r.id, total)
 	r.packetHandler(r.buf[:length])
 	return total, nil
 }

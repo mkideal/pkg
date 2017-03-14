@@ -68,29 +68,11 @@ func (ws *WSession) Send(p Packet) {
 	}
 }
 
-func (ws *WSession) write(b []byte) (err error) {
-	/*if encrypter := ws.encrypter; encrypter != nil {
-		start := 0
-		length := 0
-		for len(src[start:]) > 0 {
-			length = len(src[start:])
-			if len(ws.encryptBuf) < length {
-				length = len(ws.encryptBuf)
-			}
-			encrypter.XORStream(ws.encryptBuf[:length], src[start:start+length])
-			_, err = ws.conn.Write(ws.encryptBuf[:length])
-			start += length
-		}
-	} else {*/
-	_, err = ws.conn.Write(b)
-	//}
-	//b.Done()
-	return
-}
-
 func (ws *WSession) startWriteLoop(startWrite, endWrite chan<- struct{}) {
 	startWrite <- struct{}{}
 	remain := 0
+	id := ws.Id()
+	log.Debug("session %s write loop begin", id)
 	for {
 		if ws.getClosed() {
 			remain = len(ws.writeChan)
@@ -98,7 +80,7 @@ func (ws *WSession) startWriteLoop(startWrite, endWrite chan<- struct{}) {
 		}
 		select {
 		case p := <-ws.writeChan:
-			err := ws.write(p.Bytes())
+			_, err := ws.conn.Write(p.Bytes())
 			if err != nil {
 				ws.setClosed()
 			}
@@ -108,14 +90,14 @@ func (ws *WSession) startWriteLoop(startWrite, endWrite chan<- struct{}) {
 
 	for i := 0; i < remain; i++ {
 		p := <-ws.writeChan
-		err := ws.write(p.Bytes())
+		_, err := ws.conn.Write(p.Bytes())
 		if err != nil {
 			break
 		}
 	}
 
 	ws.conn.Close()
-	log.Debug("WSession startWriteLoop end")
+	log.Debug("session %s write loop end", id)
 	endWrite <- struct{}{}
 }
 
@@ -164,7 +146,9 @@ func NewRWSession(
 }
 
 func (s *RWSession) startReadLoop(startRead, endRead chan<- struct{}) {
+	id := s.Id()
 	startRead <- struct{}{}
+	log.Debug("session %s read loop begin", id)
 	for {
 		_, err := s.packetReader.ReadPacket()
 		if err != nil {
@@ -174,7 +158,7 @@ func (s *RWSession) startReadLoop(startRead, endRead chan<- struct{}) {
 			break
 		}
 	}
-	log.Debug("RWSession startReadLoop end")
+	log.Debug("session %s read loop end", id)
 	endRead <- struct{}{}
 }
 
