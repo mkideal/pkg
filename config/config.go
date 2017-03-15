@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	errUnsupportedOutputFormat = errors.New("unspported output format")
+	errUnsupportedOutputFormat = errors.New("unsupported output format")
 )
 
 type Configuration interface {
