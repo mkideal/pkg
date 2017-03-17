@@ -71,11 +71,15 @@ func (r *packetReader) ReadPacket() (int, error) {
 	if len(r.buf) < int(length) {
 		r.buf = make([]byte, length)
 	}
-	n, err = r.conn.Read(r.buf[:length])
-	total += n
-	if err != nil {
-		log.Info("%s: read error: %v", r.id, err)
-		return total, err
+	readedNum := uint32(0)
+	for readedNum < length {
+		n, err = r.conn.Read(r.buf[readedNum:length])
+		readedNum += uint32(n)
+		total += n
+		if err != nil {
+			log.Info("%s: read error: %v", r.id, err)
+			return total, err
+		}
 	}
 	log.Debug("%s: read bytes number: %d", r.id, total)
 	r.packetHandler(r.buf[:length])
