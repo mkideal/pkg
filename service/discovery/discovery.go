@@ -30,6 +30,10 @@ type Discovery struct {
 	resolver *etcdnaming.GRPCResolver
 }
 
+func (dc *Discovery) Client() *clientv3.Client {
+	return dc.client
+}
+
 func (dc *Discovery) SetCommandLineFlags(flagSet *flag.FlagSet) {
 	flagSet.StringVar(&dc.EtcdEndpoints, "etcd", os.Getenv("ETCD_ENDPOINTS"), "etcd endpoints, default=${ETCD_ENDPOINTS}")
 }
