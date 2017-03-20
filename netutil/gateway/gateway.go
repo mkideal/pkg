@@ -55,7 +55,7 @@ func New(cfg Config, newUser func() User) *Gate {
 	}
 }
 
-func (gate *Gate) Run(async bool) error {
+func (gate *Gate) Startup(async bool) error {
 	var (
 		cert tls.Certificate
 		err  error
@@ -80,8 +80,9 @@ func (gate *Gate) Run(async bool) error {
 	return err
 }
 
-func (gate *Gate) Quit() {
+func (gate *Gate) Shutdown(wg *sync.WaitGroup) {
 	//TODO
+	wg.Done()
 }
 
 func (gate *Gate) UserCount() int {

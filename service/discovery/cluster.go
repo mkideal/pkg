@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/mkideal/pkg/math/random"
 	"github.com/mkideal/pkg/netutil"
@@ -64,7 +65,7 @@ func NewCluster(serviceName string, balancer grpc.Balancer, opts ...ClusterOptio
 	return cluster
 }
 
-func (cluster *Cluster) Run() error {
+func (cluster *Cluster) Startup() error {
 	if err := cluster.balancer.Start(cluster.serviceName, grpc.BalancerConfig{}); err != nil {
 		return err
 	}
@@ -96,8 +97,9 @@ func (cluster *Cluster) Run() error {
 	return nil
 }
 
-func (cluster *Cluster) Quit() {
+func (cluster *Cluster) Shutdown(wg *sync.WaitGroup) {
 	cluster.quitCh <- struct{}{}
+	wg.Done()
 }
 
 func (cluster *Cluster) Get(req *GetRequest) *GetResponse {
