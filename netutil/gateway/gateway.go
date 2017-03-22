@@ -1,11 +1,11 @@
 package gateway
 
 import (
-	"crypto/md5"
 	"crypto/tls"
 	"errors"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/mkideal/log"
 	"github.com/mkideal/pkg/netutil"
@@ -22,6 +22,7 @@ type User interface {
 	SetSession(netutil.Session)
 	Authorized() bool
 	SetAuthorized(bool)
+	LastUnauthorizedTime() int64
 	OnRecv([]byte)
 	OnNewSession()
 	OnQuitSession()
@@ -65,9 +66,6 @@ func (gate *Gate) Startup(async bool) error {
 		if err != nil {
 			return err
 		}
-		for _, certBytes := range cert.Certificate {
-			log.Info("certBytes.length=%d, md5=%x", len(certBytes), md5.Sum(certBytes))
-		}
 	}
 	switch gate.config.Protocol {
 	case protocol.TCP:
@@ -77,6 +75,27 @@ func (gate *Gate) Startup(async bool) error {
 	default:
 		err = ErrUnsupportedProtocol
 	}
+	// clear unauthorized users
+	go func() {
+		for range time.Tick(time.Minute) {
+			expire := time.Now().Add(-time.Second * 30).Unix()
+			gate.locker.Lock()
+			for key, user := range gate.users {
+				if user.Authorized() {
+					continue
+				}
+				if lastUnauthorizedTime := user.LastUnauthorizedTime(); lastUnauthorizedTime < expire {
+					log.Trace("delete user %v, lastUnauthorizedTime=%d", key, lastUnauthorizedTime)
+					delete(gate.users, key)
+					session := user.GetSession()
+					if session != nil {
+						session.Quit()
+					}
+				}
+			}
+			gate.locker.Unlock()
+		}
+	}()
 	return err
 }
 

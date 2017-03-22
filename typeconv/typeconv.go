@@ -2,7 +2,6 @@ package typeconv
 
 import (
 	"encoding/json"
-	"fmt"
 	"strconv"
 )
 
@@ -39,7 +38,11 @@ func ToString(v interface{}) string {
 	case []byte:
 		return string(value)
 	default:
-		return fmt.Sprintf("%v", v)
+		data, err := json.Marshal(v)
+		if err != nil {
+			return "{}"
+		}
+		return string(data)
 	}
 }
 
