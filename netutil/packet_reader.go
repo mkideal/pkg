@@ -48,6 +48,19 @@ const (
 	MaxPacketLength = 4 * 1024 * 1024 // 4M
 )
 
+func (r *packetReader) read(b []byte) (int, error) {
+	length := len(b)
+	readedNum := 0
+	for readedNum < length {
+		n, err := r.conn.Read(b[readedNum:length])
+		readedNum += n
+		if err != nil {
+			return readedNum, err
+		}
+	}
+	return readedNum, nil
+}
+
 func (r *packetReader) ReadPacket() (int, error) {
 	total := 0
 	// set read timeout
@@ -55,14 +68,14 @@ func (r *packetReader) ReadPacket() (int, error) {
 		r.conn.SetReadDeadline(time.Now().Add(r.timeout))
 	}
 	// read packet length(lenof(packet.length)+lenof(packet.body)
-	n, err := r.conn.Read(r.byte1[:])
+	n, err := r.read(r.byte1[:])
 	total += n
 	if err != nil {
 		log.Info("%s: read error: %v", r.id, err)
 		return total, err
 	}
+	// parse packet length
 	length := binary.BigEndian.Uint32(r.byte1[:])
-	log.Trace("%s: binary BigEndian decode %v as uint32 result: %d", r.id, r.byte1[:], length)
 	if length > MaxPacketLength {
 		log.Info("%s: length %d too big", r.id, length)
 		return total, errLengthTooBig
@@ -71,17 +84,15 @@ func (r *packetReader) ReadPacket() (int, error) {
 	if len(r.buf) < int(length) {
 		r.buf = make([]byte, length)
 	}
-	readedNum := uint32(0)
-	for readedNum < length {
-		n, err = r.conn.Read(r.buf[readedNum:length])
-		readedNum += uint32(n)
-		total += n
-		if err != nil {
-			log.Info("%s: read error: %v", r.id, err)
-			return total, err
-		}
+	n, err = r.read(r.buf[:length])
+	total += n
+	if err != nil {
+		log.Info("%s: read error: %v", r.id, err)
+		return total, err
 	}
-	log.Debug("%s: read bytes number: %d", r.id, total)
+	log.Debug("%s: read %d bytes", r.id, total)
+
+	// handle readed body
 	r.packetHandler(r.buf[:length])
 	return total, nil
 }
