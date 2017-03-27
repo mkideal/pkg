@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -11,6 +12,9 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/mkideal/pkg/encoding/jsonx"
+	"github.com/mkideal/pkg/netutil/httputil"
 )
 
 var (
@@ -34,11 +38,19 @@ type ConfigBase struct {
 	OutputOfConfig string `json:"-" xml:"-" cli:"config-output" usage:"output of config, exit process if non-empty"`
 }
 
+func filenameSuffix(filename, dft string) string {
+	if i := strings.LastIndex(filename, "."); i > 0 && i+1 < len(filename) {
+		return filename[i+1:]
+	}
+	return dft
+}
+
 func (c *ConfigBase) Init(conf interface{}) error {
 	if c.SourceOfConfig != "" {
 		var (
 			reader io.Reader
 			err    error
+			format = "json"
 		)
 		if strings.HasPrefix(c.SourceOfConfig, "http://") || strings.HasPrefix(c.SourceOfConfig, "https://") {
 			var resp *http.Response
@@ -51,6 +63,12 @@ func (c *ConfigBase) Init(conf interface{}) error {
 					err = errors.New(resp.Status)
 				}
 			}
+			contentType := resp.Header.Get(httputil.HeaderContentType)
+			if strings.Contains(contentType, httputil.MIMEApplicationJSON) {
+				format = "json"
+			} else if strings.Contains(contentType, httputil.MIMEApplicationXML) {
+				format = "xml"
+			}
 		} else {
 			var file *os.File
 			file, err = os.Open(c.SourceOfConfig)
@@ -58,9 +76,23 @@ func (c *ConfigBase) Init(conf interface{}) error {
 				defer file.Close()
 				reader = file
 			}
+			format = filenameSuffix(c.SourceOfConfig, format)
 		}
 		if reader != nil {
-			err = json.NewDecoder(reader).Decode(conf)
+			switch format {
+			case "json":
+				// json format which supports comments and extra comma at last element of object or array
+				var node jsonx.Node
+				node, err = jsonx.Read(reader, jsonx.WithComment(), jsonx.WithExtraComma())
+				if err == nil {
+					var buf bytes.Buffer
+					if err = jsonx.Write(&buf, node); err == nil {
+						err = json.NewDecoder(&buf).Decode(conf)
+					}
+				}
+			case "xml":
+				err = xml.NewDecoder(reader).Decode(conf)
+			}
 		}
 		if err != nil {
 			return errors.New("read config from " + c.SourceOfConfig + ": " + err.Error())
@@ -82,9 +114,7 @@ func (c *ConfigBase) Init(conf interface{}) error {
 			filename = out[1]
 		} else if len(out) == 1 {
 			// yyy.json
-			if i := strings.LastIndex(c.OutputOfConfig, "."); i > 0 && i+1 < len(c.OutputOfConfig) {
-				format = c.OutputOfConfig[i+1:]
-			}
+			format = filenameSuffix(c.OutputOfConfig, format)
 		}
 		switch format {
 		case "json":
