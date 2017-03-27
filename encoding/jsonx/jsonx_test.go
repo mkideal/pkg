@@ -8,22 +8,22 @@ import (
 
 func TestDecode(t *testing.T) {
 	r := strings.NewReader(`{"a":1,"b":true,"c":[{"x":1.2},{"y":2.3}],"d":{}}`)
-	node, err := Decode(r, WithExtraComma())
+	node, err := Read(r, WithExtraComma())
 	if err != nil {
 		t.Fatalf("error: %v", err)
 		return
 	}
-	Encode(os.Stdout, node, WithIndent("    "))
+	Write(os.Stdout, node, WithIndent("    "))
 }
 
 func TestDecodeWithUnquotedKey(t *testing.T) {
 	r := strings.NewReader(`{a:1,b:true,c:[{x:1.2},{y:2.3}],d:{}}`)
-	node, err := Decode(r, WithUnquotedKey())
+	node, err := Read(r, WithUnquotedKey())
 	if err != nil {
 		t.Fatalf("error: %v", err)
 		return
 	}
-	Encode(os.Stdout, node, WithIndent("    "))
+	Write(os.Stdout, node, WithIndent("    "))
 }
 
 func TestDecodeWithComment(t *testing.T) {
@@ -42,10 +42,10 @@ func TestDecodeWithComment(t *testing.T) {
 	// doc d
 	"d":{}
 }`)
-	node, err := Decode(r, WithComment())
+	node, err := Read(r, WithComment())
 	if err != nil {
 		t.Fatalf("error: %v", err)
 		return
 	}
-	Encode(os.Stdout, node, WithIndent("    "), WithComment())
+	Write(os.Stdout, node, WithIndent("    "), WithComment())
 }
