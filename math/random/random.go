@@ -5,6 +5,8 @@ import (
 	crand "crypto/rand"
 	"encoding/binary"
 	"math/rand"
+	"reflect"
+	"sort"
 	"time"
 )
 
@@ -120,4 +122,38 @@ func String(length int, source rand.Source, modes ...int) string {
 		buf.WriteByte('-')
 	}
 	return buf.String()
+}
+
+type SwapableSlice interface {
+	Len() int
+	Swap(i, j int)
+}
+
+func Shuffle(orders SwapableSlice, source rand.Source) {
+	for i := orders.Len() - 1; i >= 0; i-- {
+		if source == nil {
+			orders.Swap(i, rand.Intn(i+1))
+		} else {
+			orders.Swap(i, int(source.Int63())%(i+1))
+		}
+	}
+}
+
+func ShuffleInts(orders []int, source rand.Source)       { Shuffle(sort.IntSlice(orders), source) }
+func ShuffleFloats(orders []float64, source rand.Source) { Shuffle(sort.Float64Slice(orders), source) }
+func ShuffleStrings(orders []string, source rand.Source) { Shuffle(sort.StringSlice(orders), source) }
+
+type swapableSlice struct {
+	swapper func(int, int)
+	length  int
+}
+
+func (s swapableSlice) Len() int      { return s.length }
+func (s swapableSlice) Swap(i, j int) { s.swapper(i, j) }
+
+func ShuffleSlice(slice interface{}, source rand.Source) {
+	Shuffle(swapableSlice{
+		swapper: reflect.Swapper(slice),
+		length:  reflect.ValueOf(slice).Len(),
+	}, source)
 }

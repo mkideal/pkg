@@ -1,7 +1,6 @@
 package jsonx
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -36,13 +35,13 @@ func outputNext(prefix string, w io.Writer, opt options) error {
 	return err
 }
 
-func outputNodeTail(w io.Writer, n Node, writeComment bool, lastNode bool) error {
-	if !lastNode {
+func outputNodeTail(w io.Writer, n Node, topNode, lastNode bool, opt options) error {
+	if (opt.extraComma || !lastNode) && !topNode {
 		if _, err := fmt.Fprint(w, ","); err != nil {
 			return err
 		}
 	}
-	if writeComment && n.Comment() != nil {
+	if opt.supportComment && n.Comment() != nil {
 		if _, err := fmt.Fprint(w, n.Comment().Text()); err != nil {
 			return err
 		}
@@ -69,7 +68,6 @@ func (n nodebase) Comment() *encoding.CommentGroup { return n.comment }
 func (n nodebase) NumChild() int                   { return 0 }
 func (n nodebase) ByIndex(i int) (string, Node)    { return "", nil }
 func (n nodebase) ByKey(key string) Node           { return nil }
-func (n nodebase) Decode(ptr interface{}) error    { return errors.New("not implemented") }
 
 func (n *nodebase) setDoc(doc *encoding.CommentGroup)         { n.doc = doc }
 func (n *nodebase) setComment(comment *encoding.CommentGroup) { n.comment = comment }
@@ -97,6 +95,14 @@ func (n *objectNode) addChild(key string, value Node) {
 	}
 }
 
+func (n objectNode) Interface() interface{} {
+	m := make(map[string]interface{})
+	for _, kv := range n.children {
+		m[kv.key] = kv.value.Interface()
+	}
+	return m
+}
+
 func (n objectNode) Kind() NodeKind               { return ObjectNode }
 func (n objectNode) NumChild() int                { return len(n.children) }
 func (n objectNode) ByIndex(i int) (string, Node) { return n.children[i].key, n.children[i].value }
@@ -111,7 +117,7 @@ func (n objectNode) ByKey(key string) Node {
 	return n.children[index].value
 }
 
-func (n *objectNode) output(prefix string, w io.Writer, opt options, lastNode bool) error {
+func (n *objectNode) output(prefix string, w io.Writer, opt options, topNode, lastNode bool) error {
 	writeComment := opt.indent != "" && opt.supportComment
 	if _, err := fmt.Fprint(w, "{"); err != nil {
 		return err
@@ -144,7 +150,7 @@ func (n *objectNode) output(prefix string, w io.Writer, opt options, lastNode bo
 				return err
 			}
 		}
-		if err := child.value.output(prefix+opt.indent, w, opt, i+1 == numChild); err != nil {
+		if err := child.value.output(prefix+opt.indent, w, opt, false, i+1 == numChild); err != nil {
 			return err
 		}
 	}
@@ -158,7 +164,7 @@ func (n *objectNode) output(prefix string, w io.Writer, opt options, lastNode bo
 	if _, err := fmt.Fprint(w, next); err != nil {
 		return err
 	}
-	return outputNodeTail(w, n, writeComment, lastNode)
+	return outputNodeTail(w, n, topNode, lastNode, opt)
 }
 
 // arrayNode represents array node
@@ -175,12 +181,24 @@ func (n *arrayNode) addChild(value Node) {
 	n.children = append(n.children, value)
 }
 
+func (n arrayNode) Interface() interface{} {
+	size := len(n.children)
+	if size == 0 {
+		return []interface{}{}
+	}
+	s := make([]interface{}, 0, size)
+	for _, child := range n.children {
+		s = append(s, child.Interface())
+	}
+	return s
+}
+
 func (n arrayNode) Kind() NodeKind               { return ArrayNode }
 func (n arrayNode) NumChild() int                { return len(n.children) }
 func (n arrayNode) ByIndex(i int) (string, Node) { return "", n.children[i] }
 func (n arrayNode) ByKey(key string) Node        { return nil }
 
-func (n *arrayNode) output(prefix string, w io.Writer, opt options, lastNode bool) error {
+func (n *arrayNode) output(prefix string, w io.Writer, opt options, topNode, lastNode bool) error {
 	writeComment := opt.indent != "" && opt.supportComment
 	if _, err := fmt.Fprint(w, "["); err != nil {
 		return err
@@ -199,7 +217,7 @@ func (n *arrayNode) output(prefix string, w io.Writer, opt options, lastNode boo
 				return err
 			}
 		}
-		if err := child.output(prefix+opt.indent, w, opt, i+1 == numChild); err != nil {
+		if err := child.output(prefix+opt.indent, w, opt, false, i+1 == numChild); err != nil {
 			return err
 		}
 	}
@@ -213,7 +231,7 @@ func (n *arrayNode) output(prefix string, w io.Writer, opt options, lastNode boo
 	if _, err := fmt.Fprint(w, next); err != nil {
 		return err
 	}
-	return outputNodeTail(w, n, writeComment, lastNode)
+	return outputNodeTail(w, n, topNode, lastNode, opt)
 }
 
 // basicNode represents a basic node, e.g. char,string,ident,float,int
@@ -247,22 +265,32 @@ func newBasicNode(pos scanner.Position, tok rune, value string) (*basicNode, err
 	return n, nil
 }
 
+func (n basicNode) Interface() interface{} {
+	switch n.kind {
+	case CharNode:
+		value, _, _, _ := strconv.UnquoteChar(n.value, '\'')
+		return value
+	case StringNode:
+		value, _ := strconv.Unquote(n.value)
+		return value
+	case FloatNode:
+		value, _ := strconv.ParseFloat(n.value, 64)
+		return value
+	case IntNode:
+		value, _ := strconv.ParseInt(n.value, 0, 64)
+		return value
+	case IdentNode:
+		return n.value
+	default:
+		return nil
+	}
+}
+
 func (n *basicNode) Kind() NodeKind { return n.kind }
 
-func (n *basicNode) output(prefix string, w io.Writer, opt options, lastNode bool) error {
-	writeComment := opt.indent != "" && opt.supportComment
+func (n *basicNode) output(prefix string, w io.Writer, opt options, topNode, lastNode bool) error {
 	if _, err := fmt.Fprint(w, n.value); err != nil {
 		return err
 	}
-	return outputNodeTail(w, n, writeComment, lastNode)
-}
-
-func (n *basicNode) Decode(ptr interface{}) error {
-	rv, err := decodableValue(ptr)
-	if err != nil {
-		return err
-	}
-	//TODO
-	_ = rv
-	return nil
+	return outputNodeTail(w, n, topNode, lastNode, opt)
 }

@@ -1,7 +1,6 @@
 package jsonx
 
 import (
-	"bytes"
 	"io"
 	"text/scanner"
 
@@ -46,15 +45,15 @@ type Node interface {
 	ByIndex(i int) (key string, node Node)
 	// ByKey gets child node by key, nil returned if key not found
 	ByKey(key string) Node
-	// Decode decodes node to ptr
-	Decode(ptr interface{}) error
+	// Interface returns value of node as an interface
+	Interface() interface{}
 
 	// setDoc sets doc comment group
 	setDoc(doc *encoding.CommentGroup)
 	// setComment sets line comment group
 	setComment(comment *encoding.CommentGroup)
 	// output writes Node to writer
-	output(prefix string, w io.Writer, opt options, lastNode bool) error
+	output(prefix string, w io.Writer, opt options, topNode, lastNode bool) error
 }
 
 // Option represents a function for setting options
@@ -130,16 +129,5 @@ func Read(r io.Reader, opts ...Option) (Node, error) {
 
 // Write write a json node to writer w
 func Write(w io.Writer, node Node, opts ...Option) error {
-	return node.output("", w, applyOptions(opts), true)
+	return node.output("", w, applyOptions(opts), true, true)
 }
-
-// Unmarshal unmarshals data to pointer ptr
-func Unmarshal(data []byte, ptr interface{}, opts ...Option) error {
-	node, err := Read(bytes.NewBuffer(data), opts...)
-	if err == nil {
-		err = node.Decode(ptr)
-	}
-	return err
-}
-
-//TODO: implements Marshal function: func Marshal(i interface{}, opts ...Option) ([]byte, error)
