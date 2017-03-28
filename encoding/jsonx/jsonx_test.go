@@ -225,3 +225,111 @@ func TestParser(t *testing.T) {
 		}
 	}
 }
+
+func TestUnmarshal(t *testing.T) {
+	type A struct {
+		Id   int64  `json:"id"`
+		Name string `json:"name"`
+	}
+	type B struct {
+		Key   string `json:"key"`
+		Value int    `json:"value"`
+	}
+	type C struct {
+		A A       `json:"a"`
+		B B       `json:"b"`
+		X int     `json:"x"`
+		Y float32 `json:"y"`
+		Z bool    `json:"z"`
+		S []B     `json:"s"`
+	}
+	value := `{"a":{"id":1,"name":"xxx"},"b":{"key":"key","value":222},"x":2,"y":1.5,"z":true,"s":[{"key":"k1","value":1},{"key":"k2","value":2},{"key":"","value":0}]}`
+	data1 := []byte(`{
+		/* c-style comment supported if contains option WithComment
+		 * extra comma allowed if contains option WithExtraComma
+		 */
+		// a is an object
+		"a": {
+			// id is an integer
+			"id": 1,
+			// name is a string
+			"name": "xxx", // name of A
+		},
+		"b": {
+			"key": "key",
+			"value": 222, // NOTE: here is an extra comma, but no problem if contains option WithExtraComma
+		},
+		"x": 2,
+		"y": 1.5,
+		"z": true,
+		"s": [
+			// array element 0
+			{"key":"k1", "value": 1},
+			// array element 1
+			{
+				"key":"k2",
+				"value":2
+			},{} // array element 2
+		]
+	}`)
+	v1 := new(C)
+	err := Unmarshal(data1, v1, WithExtraComma(), WithComment())
+	if err != nil {
+		t.Errorf("Unmarshal data1 error: %v", err)
+		return
+	}
+	marshaled, err := Marshal(v1)
+	if err != nil {
+		t.Errorf("Unmarshal v1 error: %v", err)
+		return
+	}
+	if string(marshaled) != value {
+		t.Errorf("marshaled v1 not equal to value: `%s` vs `%s`", string(marshaled), value)
+		return
+	}
+
+	data2 := []byte(`{
+		/* c-style comment supported if contains option WithComment
+		 * extra comma allowed if contains option WithExtraComma
+		 * key not quoted with " allowed if contains option WithUnquotedKey
+		 */
+		// a is an object
+		a: {
+			// id is an integer
+			id: 1,
+			// name is a string
+			name: "xxx", // name of A
+		},
+		b: {
+			key: "key",
+			value: 222, // NOTE: here is an extra comma, but no problem if contains option WithExtraComma
+		},
+		x: 2,
+		y: 1.5,
+		z: true,
+		s: [
+			// array element 0
+			{key:"k1", value: 1},
+			// array element 1
+			{
+				key:"k2",
+				value:2
+			},{} // array element 2
+		]
+	}`)
+	v2 := new(C)
+	err = Unmarshal(data2, v2, WithExtraComma(), WithComment(), WithUnquotedKey())
+	if err != nil {
+		t.Errorf("Unmarshal data2 error: %v", err)
+		return
+	}
+	marshaled, err = Marshal(v2)
+	if err != nil {
+		t.Errorf("Unmarshal v2 error: %v", err)
+		return
+	}
+	if string(marshaled) != value {
+		t.Errorf("marshaled v2 not equal to value: `%s` vs `%s`", string(marshaled), value)
+		return
+	}
+}
