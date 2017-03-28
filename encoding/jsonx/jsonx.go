@@ -121,6 +121,9 @@ func WriteFile(filename string, node Node, perm os.FileMode, opts ...Option) err
 
 // Unmarshal wraps json.Unmarshal with options
 func Unmarshal(data []byte, v interface{}, opts ...Option) error {
+	if len(opts) == 0 {
+		return json.Unmarshal(data, v)
+	}
 	buf := bytes.NewBuffer(data)
 	node, err := Read(buf, opts...)
 	if err != nil {
