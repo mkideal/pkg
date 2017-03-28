@@ -7,22 +7,32 @@ import (
 	"github.com/mkideal/pkg/encoding"
 )
 
+const (
+	opLBrace = '{'
+	opRBrace = '}'
+	opLBrack = '['
+	opRBrack = ']'
+	opComma  = ','
+	opColon  = ':'
+	opAdd    = '+'
+	opSub    = '-'
+)
+
 // parser parses json
 type parser struct {
 	encoding.Parser
 	opt options
 }
 
-func (p *parser) init(s *scanner.Scanner, opt options) {
+func (p *parser) init(s *scanner.Scanner, opt options) error {
 	p.opt = opt
 	p.Init(s)
-	p.Next()
+	return p.Next()
 }
 
 func (p *parser) expect(tok rune) error {
 	if p.Tok == tok {
-		p.Next() // make progress
-		return nil
+		return p.Next() // make progress
 	}
 	lit := "`" + p.Lit + "`"
 	if p.Tok == scanner.EOF {
@@ -38,14 +48,38 @@ func (p *parser) parseNode() (Node, error) {
 		return p.parseObjectNode()
 	case opLBrack:
 		return p.parseArrayNode()
+	case opAdd:
+		return p.parseSignNode(opAdd)
+	case opSub:
+		return p.parseSignNode(opSub)
 	default:
-		n, err := newBasicNode(p.Pos, p.Tok, p.Lit)
+		n, err := newLiteralNode(p.Pos, p.Tok, p.Lit)
 		if err != nil {
 			return nil, err
 		}
-		p.Next()
+		err = p.Next()
 		return n, err
 	}
+}
+
+func (p *parser) parseSignNode(pfxTok rune) (Node, error) {
+	if err := p.Next(); err != nil {
+		return nil, err
+	}
+	lit := "`" + p.Lit + "`"
+	if p.Tok == scanner.EOF {
+		lit = "EOF"
+	}
+	if p.Tok != scanner.Float && p.Tok != scanner.Int {
+		return nil, fmt.Errorf("expect float or integer, but got %v at %v", lit, p.Pos)
+	}
+	node, err := newLiteralNode(p.Pos, p.Tok, p.Lit)
+	if err != nil {
+		return nil, err
+	}
+	err = p.Next()
+	node.value = string(pfxTok) + node.value
+	return node, err
 }
 
 func (p *parser) parseKey() (key string, err error) {
@@ -64,18 +98,20 @@ func (p *parser) parseKey() (key string, err error) {
 	}
 	if err == nil {
 		key = p.Lit
-		p.Next()
+		err = p.Next()
 	}
 	return
 }
 
 func (p *parser) parseObjectNode() (Node, error) {
 	doc := p.LeadComment
+	pos := p.Pos
 	if err := p.expect(opLBrace); err != nil {
 		return nil, err
 	}
 	obj := newObjectNode()
 	obj.doc = doc
+	obj.pos = pos
 	for p.Tok != scanner.EOF && p.Tok != opRBrace {
 		doc := p.LeadComment
 		key, err := p.parseKey()
@@ -114,11 +150,13 @@ func (p *parser) parseObjectNode() (Node, error) {
 
 func (p *parser) parseArrayNode() (Node, error) {
 	doc := p.LeadComment
+	pos := p.Pos
 	if err := p.expect(opLBrack); err != nil {
 		return nil, err
 	}
 	arr := newArrayNode()
 	arr.doc = doc
+	arr.pos = pos
 	for p.Tok != scanner.EOF && p.Tok != opRBrack {
 		doc := p.LeadComment
 		value, err := p.parseNode()

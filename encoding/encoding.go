@@ -2,6 +2,7 @@ package encoding
 
 import (
 	"bytes"
+	"errors"
 	"text/scanner"
 )
 
@@ -43,6 +44,7 @@ type Parser struct {
 	Pos scanner.Position
 	Tok rune
 	Lit string
+	err error
 
 	Comments    []*CommentGroup
 	LeadComment *CommentGroup
@@ -51,13 +53,22 @@ type Parser struct {
 
 func (p *Parser) Init(s *scanner.Scanner) {
 	p.scanner = s
+	p.scanner.Error = p.errorHandler
 }
 
-func (p *Parser) Next() {
+func (p *Parser) errorHandler(s *scanner.Scanner, msg string) {
+	p.err = errors.New(msg + " at " + s.Pos().String())
+}
+
+func (p Parser) Err() error { return p.err }
+
+func (p *Parser) Next() error {
 	p.LeadComment = nil
 	p.LineComment = nil
 	prev := p.Pos
-	p.next0()
+	if err := p.next0(); err != nil {
+		return err
+	}
 
 	if p.Tok == scanner.Comment {
 		var comment *CommentGroup
@@ -79,12 +90,14 @@ func (p *Parser) Next() {
 			p.LeadComment = comment
 		}
 	}
+	return nil
 }
 
-func (p *Parser) next0() {
+func (p *Parser) next0() error {
 	p.Tok = p.scanner.Scan()
 	p.Pos = p.scanner.Pos()
 	p.Lit = p.scanner.TokenText()
+	return p.err
 }
 
 func (p *Parser) consumeComment() (comment *Comment, endline int) {

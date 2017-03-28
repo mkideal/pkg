@@ -3,58 +3,7 @@ package jsonx
 import (
 	"io"
 	"text/scanner"
-
-	"github.com/mkideal/pkg/encoding"
 )
-
-// NodeKind represents kind of json
-type NodeKind int
-
-const (
-	IdentNode  NodeKind = iota // abc,true,false
-	IntNode                    // 1
-	FloatNode                  // 1.2
-	CharNode                   // 'c'
-	StringNode                 // "xyz"
-	ObjectNode                 // {}
-	ArrayNode                  // []
-)
-
-const (
-	opLBrace = '{'
-	opRBrace = '}'
-	opLBrack = '['
-	opRBrack = ']'
-	opComma  = ','
-	opColon  = ':'
-)
-
-// Node represents top-level json object
-type Node interface {
-	// embed encoding.Node
-	encoding.Node
-	// Kind returns kind of node
-	Kind() NodeKind
-	// Doc returns lead comments
-	Doc() *encoding.CommentGroup
-	// Comment returns line comments
-	Comment() *encoding.CommentGroup
-	// NumChild returns number of child nodes
-	NumChild() int
-	// ByIndex gets ith child node, key is empty if current node is not an object node
-	ByIndex(i int) (key string, node Node)
-	// ByKey gets child node by key, nil returned if key not found
-	ByKey(key string) Node
-	// Interface returns value of node as an interface
-	Interface() interface{}
-
-	// setDoc sets doc comment group
-	setDoc(doc *encoding.CommentGroup)
-	// setComment sets line comment group
-	setComment(comment *encoding.CommentGroup)
-	// output writes Node to writer
-	output(prefix string, w io.Writer, opt options, topNode, lastNode bool) error
-}
 
 // Option represents a function for setting options
 type Option func(*options)
@@ -68,6 +17,14 @@ type options struct {
 	unquotedKey bool
 	// extra comma could be insert to end of last node of object or array if extraComma is true
 	extraComma bool
+}
+
+func (opt options) clone(dst *options) {
+	dst.prefix = opt.prefix
+	dst.indent = opt.indent
+	dst.supportComment = opt.supportComment
+	dst.unquotedKey = opt.unquotedKey
+	dst.extraComma = opt.extraComma
 }
 
 // WithComment returns an option which sets supportComment true
@@ -127,7 +84,7 @@ func Read(r io.Reader, opts ...Option) (Node, error) {
 	return p.parseNode()
 }
 
-// Write write a json node to writer w
+// Write writes a json node to writer w
 func Write(w io.Writer, node Node, opts ...Option) error {
 	return node.output("", w, applyOptions(opts), true, true)
 }

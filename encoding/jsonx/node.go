@@ -9,6 +9,66 @@ import (
 	"github.com/mkideal/pkg/encoding"
 )
 
+// NodeKind represents kind of json
+type NodeKind int
+
+const (
+	InvalidNode NodeKind = iota // abc,true,false
+	IdentNode                   // abc,true,false
+	IntNode                     // 1
+	FloatNode                   // 1.2
+	CharNode                    // 'c'
+	StringNode                  // "xyz"
+	ObjectNode                  // {}
+	ArrayNode                   // []
+)
+
+func (kind NodeKind) String() string {
+	if kind >= 0 && kind < NodeKind(len(nodeKinds)) {
+		return nodeKinds[kind]
+	}
+	return "Unknown kind(" + strconv.Itoa(int(kind)) + ")"
+}
+
+var nodeKinds = [...]string{
+	InvalidNode: "InvalidNode",
+	IdentNode:   "IdentNode",
+	IntNode:     "IntNode",
+	FloatNode:   "FloatNode",
+	CharNode:    "CharNode",
+	StringNode:  "StringNode",
+	ObjectNode:  "ObjectNode",
+	ArrayNode:   "ArrayNode",
+}
+
+// Node represents top-level json object
+type Node interface {
+	// embed encoding.Node
+	encoding.Node
+	// Kind returns kind of node
+	Kind() NodeKind
+	// Doc returns lead comments
+	Doc() *encoding.CommentGroup
+	// Comment returns line comments
+	Comment() *encoding.CommentGroup
+	// NumChild returns number of child nodes
+	NumChild() int
+	// ByIndex gets ith child node, key is empty if current node is not an object node
+	// Panic if i out of range [0,NumChild)
+	ByIndex(i int) (key string, node Node)
+	// ByKey gets child node by key, nil returned if key not found
+	ByKey(key string) Node
+	// Interface returns value of node as an interface
+	Interface() interface{}
+
+	// setDoc sets doc comment group
+	setDoc(doc *encoding.CommentGroup)
+	// setComment sets line comment group
+	setComment(comment *encoding.CommentGroup)
+	// output writes Node to writer
+	output(prefix string, w io.Writer, opt options, topNode, lastNode bool) error
+}
+
 func outputDoc(prefix string, w io.Writer, doc *encoding.CommentGroup) error {
 	if doc == nil {
 		return nil
@@ -62,13 +122,9 @@ type nodebase struct {
 	comment *encoding.CommentGroup
 }
 
-func (n nodebase) Pos() scanner.Position           { return n.pos }
-func (n nodebase) Doc() *encoding.CommentGroup     { return n.doc }
-func (n nodebase) Comment() *encoding.CommentGroup { return n.comment }
-func (n nodebase) NumChild() int                   { return 0 }
-func (n nodebase) ByIndex(i int) (string, Node)    { return "", nil }
-func (n nodebase) ByKey(key string) Node           { return nil }
-
+func (n nodebase) Pos() scanner.Position                      { return n.pos }
+func (n nodebase) Doc() *encoding.CommentGroup                { return n.doc }
+func (n nodebase) Comment() *encoding.CommentGroup            { return n.comment }
 func (n *nodebase) setDoc(doc *encoding.CommentGroup)         { n.doc = doc }
 func (n *nodebase) setComment(comment *encoding.CommentGroup) { n.comment = comment }
 
@@ -234,15 +290,15 @@ func (n *arrayNode) output(prefix string, w io.Writer, opt options, topNode, las
 	return outputNodeTail(w, n, topNode, lastNode, opt)
 }
 
-// basicNode represents a basic node, e.g. char,string,ident,float,int
-type basicNode struct {
+// literalNode represents a literal node, e.g. char,string,ident,float,int
+type literalNode struct {
 	nodebase
 	kind  NodeKind
 	value string
 }
 
-func newBasicNode(pos scanner.Position, tok rune, value string) (*basicNode, error) {
-	n := &basicNode{
+func newLiteralNode(pos scanner.Position, tok rune, value string) (*literalNode, error) {
+	n := &literalNode{
 		nodebase: nodebase{
 			pos: pos,
 		},
@@ -265,7 +321,7 @@ func newBasicNode(pos scanner.Position, tok rune, value string) (*basicNode, err
 	return n, nil
 }
 
-func (n basicNode) Interface() interface{} {
+func (n literalNode) Interface() interface{} {
 	switch n.kind {
 	case CharNode:
 		value, _, _, _ := strconv.UnquoteChar(n.value, '\'')
@@ -286,9 +342,12 @@ func (n basicNode) Interface() interface{} {
 	}
 }
 
-func (n *basicNode) Kind() NodeKind { return n.kind }
+func (n literalNode) Kind() NodeKind               { return n.kind }
+func (n literalNode) NumChild() int                { return 0 }
+func (n literalNode) ByIndex(i int) (string, Node) { return "", nil }
+func (n literalNode) ByKey(key string) Node        { return nil }
 
-func (n *basicNode) output(prefix string, w io.Writer, opt options, topNode, lastNode bool) error {
+func (n *literalNode) output(prefix string, w io.Writer, opt options, topNode, lastNode bool) error {
 	if _, err := fmt.Fprint(w, n.value); err != nil {
 		return err
 	}
