@@ -110,14 +110,21 @@ func ExampleDecodeWithComment() {
 	// doc b
 	"b":true, // line b
 
-	// doc c
+	// doc c1
+	// doc c2
 	"c":[
 		{"x":1.2},
 		// doc y
 		{"y":2.3}
 	], // line c
 	// doc d
-	"d":{}
+	"d":{
+		// doc e
+		"e": {
+			// doc f
+			"f": 1
+		}
+	}
 }`)
 	node, err := Read(r, WithComment())
 	if err != nil {
@@ -130,18 +137,25 @@ func ExampleDecodeWithComment() {
 	//   "a": 1,// line a
 	//   // doc b
 	//   "b": true,// line b
-	//   // doc c
+	//   // doc c1
+	//   // doc c2
 	//   "c": [
 	//     {
 	//       "x": 1.2
 	//     },
-	//       // doc y
+	//     // doc y
 	//     {
 	//       "y": 2.3
 	//     }
 	//   ],// line c
 	//   // doc d
-	//   "d": {}
+	//   "d": {
+	//     // doc e
+	//     "e": {
+	//       // doc f
+	//       "f": 1
+	//     }
+	//   }
 	// }
 }
 

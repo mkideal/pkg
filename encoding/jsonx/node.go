@@ -13,14 +13,14 @@ import (
 type NodeKind int
 
 const (
-	InvalidNode NodeKind = iota // abc,true,false
-	IdentNode                   // abc,true,false
-	IntNode                     // 1
-	FloatNode                   // 1.2
-	CharNode                    // 'c'
-	StringNode                  // "xyz"
-	ObjectNode                  // {}
-	ArrayNode                   // []
+	InvalidNode NodeKind = iota
+	IdentNode            // abc,true,false
+	IntNode              // 1
+	FloatNode            // 1.2
+	CharNode             // 'c'
+	StringNode           // "xyz"
+	ObjectNode           // {}
+	ArrayNode            // []
 )
 
 func (kind NodeKind) String() string {
@@ -58,8 +58,8 @@ type Node interface {
 	ByIndex(i int) (key string, node Node)
 	// ByKey gets child node by key, nil returned if key not found
 	ByKey(key string) Node
-	// Interface returns value of node as an interface
-	Interface() interface{}
+	// Value returns value of node as an interface
+	Value() interface{}
 
 	// setDoc sets doc comment group
 	setDoc(doc *encoding.CommentGroup)
@@ -73,18 +73,13 @@ func outputDoc(prefix string, w io.Writer, doc *encoding.CommentGroup) error {
 	if doc == nil {
 		return nil
 	}
-	var err error
-	for i, line := range doc.List {
-		if i > 0 {
-			fmt.Fprint(w, "\n"+prefix+line.Text)
-		} else {
-			fmt.Fprint(w, prefix+line.Text)
-		}
+	for _, line := range doc.List {
+		_, err := fmt.Fprint(w, "\n"+prefix+line.Text)
 		if err != nil {
 			return err
 		}
 	}
-	return err
+	return nil
 }
 
 func outputNext(prefix string, w io.Writer, opt options) error {
@@ -151,10 +146,10 @@ func (n *objectNode) addChild(key string, value Node) {
 	}
 }
 
-func (n objectNode) Interface() interface{} {
+func (n objectNode) Value() interface{} {
 	m := make(map[string]interface{})
 	for _, kv := range n.children {
-		m[kv.key] = kv.value.Interface()
+		m[kv.key] = kv.value.Value()
 	}
 	return m
 }
@@ -180,17 +175,14 @@ func (n *objectNode) output(prefix string, w io.Writer, opt options, topNode, la
 	}
 	numChild := len(n.children)
 	for i, child := range n.children {
-		if err := outputNext(prefix, w, opt); err != nil {
-			return err
-		}
 		doc := child.value.Doc()
 		if writeComment && doc != nil {
-			if err := outputDoc(prefix, w, doc); err != nil {
+			if err := outputDoc(prefix+opt.indent, w, doc); err != nil {
 				return err
 			}
-			if err := outputNext(prefix, w, opt); err != nil {
-				return err
-			}
+		}
+		if err := outputNext(prefix, w, opt); err != nil {
+			return err
 		}
 		key := child.key
 		// try quote key string with "
@@ -237,14 +229,14 @@ func (n *arrayNode) addChild(value Node) {
 	n.children = append(n.children, value)
 }
 
-func (n arrayNode) Interface() interface{} {
+func (n arrayNode) Value() interface{} {
 	size := len(n.children)
 	if size == 0 {
 		return []interface{}{}
 	}
 	s := make([]interface{}, 0, size)
 	for _, child := range n.children {
-		s = append(s, child.Interface())
+		s = append(s, child.Value())
 	}
 	return s
 }
@@ -261,17 +253,14 @@ func (n *arrayNode) output(prefix string, w io.Writer, opt options, topNode, las
 	}
 	numChild := len(n.children)
 	for i, child := range n.children {
-		if err := outputNext(prefix, w, opt); err != nil {
-			return err
-		}
 		doc := child.Doc()
 		if writeComment && doc != nil {
-			if err := outputDoc(prefix, w, doc); err != nil {
+			if err := outputDoc(prefix+opt.indent, w, doc); err != nil {
 				return err
 			}
-			if err := outputNext(prefix, w, opt); err != nil {
-				return err
-			}
+		}
+		if err := outputNext(prefix, w, opt); err != nil {
+			return err
 		}
 		if err := child.output(prefix+opt.indent, w, opt, false, i+1 == numChild); err != nil {
 			return err
@@ -321,7 +310,7 @@ func newLiteralNode(pos scanner.Position, tok rune, value string) (*literalNode,
 	return n, nil
 }
 
-func (n literalNode) Interface() interface{} {
+func (n literalNode) Value() interface{} {
 	switch n.kind {
 	case CharNode:
 		value, _, _, _ := strconv.UnquoteChar(n.value, '\'')

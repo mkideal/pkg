@@ -80,7 +80,9 @@ func Read(r io.Reader, opts ...Option) (Node, error) {
 		s.Mode |= scanner.ScanComments
 	}
 	p := new(parser)
-	p.init(s, opt)
+	if err := p.init(s, opt); err != nil {
+		return nil, err
+	}
 	return p.parseNode()
 }
 

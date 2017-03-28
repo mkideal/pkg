@@ -39,7 +39,6 @@ func (g *CommentGroup) Text() string {
 
 type Parser struct {
 	scanner *scanner.Scanner
-	mode    uint
 
 	Pos scanner.Position
 	Tok rune
