@@ -32,7 +32,7 @@ func (v ValidatorList) Validate() error {
 
 // AndRequire appends a boolValidator
 func (v *ValidatorList) AndRequire(val bool, msg string) *ValidatorList {
-	(*v) = append((*v), boolValidator{val: val, msg: msg})
+	(*v) = append((*v), BoolValidator{val: val, msg: msg})
 	return v
 }
 
@@ -42,13 +42,17 @@ func (v *ValidatorList) And(validator Validator) *ValidatorList {
 	return v
 }
 
-// boolValidator implements Validator which used to valite a boolean value should be true
-type boolValidator struct {
+// BoolValidator implements Validator which used to valite a boolean value should be true
+type BoolValidator struct {
 	val bool
 	msg string
 }
 
-func (v boolValidator) Validate() error {
+func NewBoolValidator(val bool, msg string) Validator {
+	return BoolValidator{val: val, msg: msg}
+}
+
+func (v BoolValidator) Validate() error {
 	if !v.val {
 		return errors.New(v.msg)
 	}

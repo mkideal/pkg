@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mkideal/log"
 	"github.com/mkideal/pkg/netutil"
 	"github.com/mkideal/pkg/netutil/protocol"
 )
@@ -85,7 +84,6 @@ func (gate *Gate) Startup(async bool) error {
 					continue
 				}
 				if lastUnauthorizedTime := user.LastUnauthorizedTime(); lastUnauthorizedTime < expire {
-					log.Trace("delete user %v, lastUnauthorizedTime=%d", key, lastUnauthorizedTime)
 					delete(gate.users, key)
 					session := user.GetSession()
 					if session != nil {

@@ -4,8 +4,6 @@ import (
 	"net"
 	"sync/atomic"
 	"time"
-
-	"github.com/mkideal/log"
 )
 
 type Packet interface {
@@ -71,8 +69,6 @@ func (ws *WSession) Send(p Packet) {
 func (ws *WSession) startWriteLoop(startWrite, endWrite chan<- struct{}) {
 	startWrite <- struct{}{}
 	remain := 0
-	id := ws.Id()
-	log.Debug("session %s write loop begin", id)
 	for {
 		if ws.getClosed() {
 			remain = len(ws.writeChan)
@@ -97,7 +93,6 @@ func (ws *WSession) startWriteLoop(startWrite, endWrite chan<- struct{}) {
 	}
 
 	ws.conn.Close()
-	log.Debug("session %s write loop end", id)
 	endWrite <- struct{}{}
 }
 
@@ -146,9 +141,7 @@ func NewRWSession(
 }
 
 func (s *RWSession) startReadLoop(startRead, endRead chan<- struct{}) {
-	id := s.Id()
 	startRead <- struct{}{}
-	log.Debug("session %s read loop begin", id)
 	for {
 		_, err := s.packetReader.ReadPacket()
 		if err != nil {
@@ -158,7 +151,6 @@ func (s *RWSession) startReadLoop(startRead, endRead chan<- struct{}) {
 			break
 		}
 	}
-	log.Debug("session %s read loop end", id)
 	endRead <- struct{}{}
 }
 

@@ -136,9 +136,20 @@ func Unmarshal(data []byte, v interface{}, opts ...Option) error {
 	return json.Unmarshal(buf.Bytes(), v)
 }
 
-// Marshal wraps json.Marshal
-func Marshal(v interface{}) ([]byte, error) {
+// Marshal marshal value v to json with options
+func Marshal(v interface{}, opts ...Option) ([]byte, error) {
 	return json.Marshal(v)
+	/*opt := applyOptions(opts)
+	node, err := reflectValue(v, opt)
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	err = Write(&buf, node, opt.clone)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil*/
 }
 
 // Decoder wraps json.Decoder with options

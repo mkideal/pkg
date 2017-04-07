@@ -24,9 +24,23 @@ const (
 	O_SPECIAL_CHAR
 )
 
+type Source interface {
+	Int63() int64
+}
+
+// defaultSource represents a unsafe random source
+type defaultSource struct{}
+
+func (source defaultSource) Int63() int64 { return rand.Int63() }
+
+func newDefaultSource(seed int64) defaultSource {
+	rand.Seed(seed)
+	return defaultSource{}
+}
+
+// defaultSource represents a safe random source
 type cryptoSource struct{}
 
-func (source cryptoSource) Seed(int64) {}
 func (source cryptoSource) Int63() int64 {
 	var b [8]byte
 	_, err := crand.Read(b[:])
@@ -38,26 +52,26 @@ func (source cryptoSource) Int63() int64 {
 }
 
 var (
-	DefaultSource rand.Source = rand.NewSource(time.Now().UnixNano())
-	CryptoSource  rand.Source = cryptoSource{}
+	DefaultSource Source = newDefaultSource(time.Now().UnixNano())
+	CryptoSource  Source = cryptoSource{}
 )
 
-func Int63(source rand.Source) int64 {
+func Int63(source Source) int64 {
 	if source == nil {
 		source = DefaultSource
 	}
 	return source.Int63()
 }
 
-func Intn(n int, source rand.Source) int {
+func Intn(n int, source Source) int {
 	return int(Int63(source) % int64(n))
 }
 
-func Bool(source rand.Source) bool {
+func Bool(source Source) bool {
 	return Intn(2, source) == 1
 }
 
-func String(length int, source rand.Source, modes ...int) string {
+func String(length int, source Source, modes ...int) string {
 	if length <= 0 {
 		return ""
 	}
@@ -81,12 +95,9 @@ func String(length int, source rand.Source, modes ...int) string {
 	if mode&O_SPECIAL_CHAR != 0 {
 		size += len(specialChars)
 	}
-	if source == nil {
-		source = DefaultSource
-	}
 	var buf bytes.Buffer
 	for i := 0; i < length; i++ {
-		index := int(source.Int63() % int64(size))
+		index := Intn(size, source)
 		tmpSize := 0
 		if mode&O_DIGIT != 0 {
 			tmpSize = len(digits)
@@ -129,7 +140,7 @@ type SwapableSlice interface {
 	Swap(i, j int)
 }
 
-func Shuffle(orders SwapableSlice, source rand.Source) {
+func Shuffle(orders SwapableSlice, source Source) {
 	for i := orders.Len() - 1; i >= 0; i-- {
 		if source == nil {
 			orders.Swap(i, rand.Intn(i+1))
@@ -139,9 +150,9 @@ func Shuffle(orders SwapableSlice, source rand.Source) {
 	}
 }
 
-func ShuffleInts(orders []int, source rand.Source)       { Shuffle(sort.IntSlice(orders), source) }
-func ShuffleFloats(orders []float64, source rand.Source) { Shuffle(sort.Float64Slice(orders), source) }
-func ShuffleStrings(orders []string, source rand.Source) { Shuffle(sort.StringSlice(orders), source) }
+func ShuffleInts(orders []int, source Source)       { Shuffle(sort.IntSlice(orders), source) }
+func ShuffleFloats(orders []float64, source Source) { Shuffle(sort.Float64Slice(orders), source) }
+func ShuffleStrings(orders []string, source Source) { Shuffle(sort.StringSlice(orders), source) }
 
 type swapableSlice struct {
 	swapper func(int, int)
@@ -151,9 +162,71 @@ type swapableSlice struct {
 func (s swapableSlice) Len() int      { return s.length }
 func (s swapableSlice) Swap(i, j int) { s.swapper(i, j) }
 
-func ShuffleSlice(slice interface{}, source rand.Source) {
+func ShuffleSlice(slice interface{}, source Source) {
 	Shuffle(swapableSlice{
 		swapper: reflect.Swapper(slice),
 		length:  reflect.ValueOf(slice).Len(),
 	}, source)
+}
+
+// FiniteDistribution represents probability distribution
+type FiniteDistribution interface {
+	Len() int
+	Probability(i int) int
+}
+
+type SummedFiniteDistribution interface {
+	FiniteDistribution
+	SumProbability() int
+}
+
+type IntsFiniteDistribution []int
+
+func (d IntsFiniteDistribution) Len() int              { return len(d) }
+func (d IntsFiniteDistribution) Probability(i int) int { return d[i] }
+
+func sumFiniteDistribution(d FiniteDistribution) int {
+	if summed, ok := d.(SummedFiniteDistribution); ok {
+		return summed.SumProbability()
+	}
+	sum := 0
+	for i, n := 0, d.Len(); i < n; i++ {
+		sum += d.Probability(i)
+	}
+	return sum
+}
+
+func Index(d FiniteDistribution, source Source) int {
+	sum := sumFiniteDistribution(d)
+	if sum <= 0 {
+		panic("sum < 0")
+	}
+	var (
+		value = Intn(sum, source)
+		acc   = 0
+		end   = d.Len() - 1
+	)
+	for i := 0; i < end; i++ {
+		acc += d.Probability(i)
+		if acc > value {
+			return i
+		}
+	}
+	return end
+}
+
+func IndexInts(d []int, source Source) int {
+	return Index(IntsFiniteDistribution(d), source)
+}
+
+type probabilityDistribution struct {
+	probability func(int) int
+	length      int
+}
+
+func (d probabilityDistribution) Len() int              { return d.length }
+func (d probabilityDistribution) Probability(i int) int { return d.probability(i) }
+
+func IndexSlice(d interface{}, probability func(int) int, source Source) int {
+	return Index(probabilityDistribution{probability, reflect.ValueOf(d).Len()}, source)
 }

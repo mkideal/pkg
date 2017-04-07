@@ -5,8 +5,6 @@ import (
 	"errors"
 	"net"
 	"time"
-
-	"github.com/mkideal/log"
 )
 
 var (
@@ -71,13 +69,11 @@ func (r *packetReader) ReadPacket() (int, error) {
 	n, err := r.read(r.byte1[:])
 	total += n
 	if err != nil {
-		log.Info("%s: read error: %v", r.id, err)
 		return total, err
 	}
 	// parse packet length
 	length := binary.BigEndian.Uint32(r.byte1[:])
 	if length > MaxPacketLength {
-		log.Info("%s: length %d too big", r.id, length)
 		return total, errLengthTooBig
 	}
 	// read packet body
@@ -87,10 +83,8 @@ func (r *packetReader) ReadPacket() (int, error) {
 	n, err = r.read(r.buf[:length])
 	total += n
 	if err != nil {
-		log.Info("%s: read error: %v", r.id, err)
 		return total, err
 	}
-	log.Debug("%s: read %d bytes", r.id, total)
 
 	// handle readed body
 	r.packetHandler(r.buf[:length])

@@ -23,11 +23,11 @@ type Address struct {
 
 // 服务发现
 type Discovery struct {
-	EtcdEndpoints string // etcd 端地址列表,以逗号分割
+	EtcdEndpoints string `json:",omitempty"` // etcd 端地址列表,以逗号分割
 
 	// etcd 客户端
-	client   *clientv3.Client
-	resolver *etcdnaming.GRPCResolver
+	client   *clientv3.Client         `json:"-"`
+	resolver *etcdnaming.GRPCResolver `json:"-"`
 }
 
 func (dc *Discovery) Client() *clientv3.Client {

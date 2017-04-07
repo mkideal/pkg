@@ -60,6 +60,8 @@ type Node interface {
 	ByKey(key string) Node
 	// Value returns value of node as an interface
 	Value() interface{}
+	// IsEmpty indicates whther node is empty
+	IsEmpty() bool
 
 	// setDoc sets doc comment group
 	setDoc(doc *encoding.CommentGroup)
@@ -154,6 +156,7 @@ func (n objectNode) Value() interface{} {
 	return m
 }
 
+func (n objectNode) IsEmpty() bool                { return len(n.children) == 0 }
 func (n objectNode) Kind() NodeKind               { return ObjectNode }
 func (n objectNode) NumChild() int                { return len(n.children) }
 func (n objectNode) ByIndex(i int) (string, Node) { return n.children[i].key, n.children[i].value }
@@ -241,6 +244,7 @@ func (n arrayNode) Value() interface{} {
 	return s
 }
 
+func (n arrayNode) IsEmpty() bool                { return len(n.children) == 0 }
 func (n arrayNode) Kind() NodeKind               { return ArrayNode }
 func (n arrayNode) NumChild() int                { return len(n.children) }
 func (n arrayNode) ByIndex(i int) (string, Node) { return "", n.children[i] }
@@ -328,6 +332,27 @@ func (n literalNode) Value() interface{} {
 		return n.value
 	default:
 		return nil
+	}
+}
+
+func (n literalNode) IsEmpty() bool {
+	if n.value == "" || n.value == `""` || n.value == `''` {
+		return true
+	}
+	switch n.kind {
+	case CharNode:
+		return n.value == `'\0'`
+	case StringNode:
+		return false
+	case FloatNode:
+		value, _ := strconv.ParseFloat(n.value, 64)
+		return value == 0
+	case IntNode:
+		return n.value == "0"
+	case IdentNode:
+		return false
+	default:
+		return false
 	}
 }
 
