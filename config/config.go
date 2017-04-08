@@ -81,15 +81,8 @@ func (c *ConfigBase) Init(conf interface{}) error {
 		if reader != nil {
 			switch format {
 			case "json":
-				// json format which supports comments and extra comma at last element of object or array
-				var node jsonx.Node
-				node, err = jsonx.Read(reader, jsonx.WithComment(), jsonx.WithExtraComma())
-				if err == nil {
-					var buf bytes.Buffer
-					if err = jsonx.Write(&buf, node); err == nil {
-						err = json.NewDecoder(&buf).Decode(conf)
-					}
-				}
+				// using jsonx to support c-style comments and extra comma at last element of object or array
+				err = jsonx.NewDecoder(reader, jsonx.WithComment(), jsonx.WithExtraComma()).Decode(conf)
 			case "xml":
 				err = xml.NewDecoder(reader).Decode(conf)
 			}

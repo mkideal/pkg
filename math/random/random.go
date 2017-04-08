@@ -135,6 +135,16 @@ func String(length int, source Source, modes ...int) string {
 	return buf.String()
 }
 
+func Perm(n int, source Source) []int {
+	s := make([]int, n)
+	for i := 0; i < n; i++ {
+		j := Intn(i+1, source)
+		s[i] = s[j]
+		s[j] = i
+	}
+	return s
+}
+
 type SwapableSlice interface {
 	Len() int
 	Swap(i, j int)
