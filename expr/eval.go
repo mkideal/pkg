@@ -114,7 +114,7 @@ func eval(e *Expr, getter VarGetter, node ast.Expr) (Value, error) {
 		case token.EQL:
 			return x.Eq(y)
 		case token.NEQ:
-			return x.Neq(y)
+			return x.Ne(y)
 		case token.GTR:
 			return x.Gt(y)
 		case token.GEQ:
