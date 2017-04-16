@@ -1,4 +1,4 @@
-package cson
+package cso
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"github.com/mkideal/pkg/encoding"
 )
 
-// cson represents Comma-Separated Object Notation
+// cson represents Comma-Separated Objects
 //
 // types:
 //	Integer

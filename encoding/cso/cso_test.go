@@ -1,4 +1,4 @@
-package cson
+package cso
 
 import (
 	"fmt"
