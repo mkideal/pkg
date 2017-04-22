@@ -1,0 +1,63 @@
+#!/usr/local/bin/midc -Ogo=. -Enopkgdir -K storage_onefile
+
+package landlord;
+
+enum Category {
+	Solo                       = 1,
+	Pair                       = 2,
+	Trio                       = 3,
+	Four                       = 4,
+	Chain                      = 5,
+	PairsChain                 = 6,
+	TrioWithSingleCard         = 7,
+	TrioWithPair               = 8,
+	Airplain                   = 9,
+	AirplainWithSmallWings     = 10,
+	AirplainWithLargeWings     = 11,
+	FourUithTwoSingleCards     = 12,
+	FourUithTwoPairs           = 13,
+	SpaceShuttle               = 14,
+	SpaceShuttleWithSmallWings = 15,
+	SpaceShuttleWithLargeWings = 16,
+	Bomb                       = 17,
+	Rocket                     = 18,
+}
+
+enum Stage {
+    Ready  = 0,
+    Bid    = 1,
+    Double = 2,
+    Play   = 3,
+}
+
+struct Hands {
+	bool valid;
+	Category category;
+	int8 value;
+	vector<uint8> lastPokers;
+}
+
+struct Landlord3PlayerState {
+    int64 id;
+    int8 pos;
+    bool isLandlord;
+    vector<uint8> pokers;
+    int32 multiple;
+    int8 bidScore;
+    bool revealed;
+}
+
+protocol Landlord3State {
+	string uuid; `key:"true"`
+	int32 playing;
+    vector<uint8> leftoverWildCards;
+    int8 firstLandlordPos;
+	Stage stage;
+	int8 firstBider;
+	int8 turn;
+	int8 landlord;
+	vector<int8> doubled;
+	int8 lastPos;
+	Hands lastHands;
+    vector<Landlord3PlayerState> players;
+}

@@ -15,6 +15,11 @@ const (
 	Joker   = 5
 )
 
+const (
+	OrderOfColoredJoker = 14
+	OrderOfPlainJoker   = 15
+)
+
 // 0 0 0 0 0 0 0 0
 // |-------| |---|
 //    (1)     (2)
@@ -25,6 +30,11 @@ type Poker uint8
 
 func New(kind int, order int) Poker {
 	return Poker(kind | (order << 3))
+}
+
+func (c Poker) IsValid() bool {
+	kind, order := c.Kind(), c.Order()
+	return c.IsJoker() || (kind >= Spade && kind <= Diamond && order >= 1 && order <= 13)
 }
 
 func (c Poker) Order() int {
@@ -45,105 +55,115 @@ func (c Poker) Value() int {
 	return order
 }
 
-func (c Poker) IsJoker() bool { return c.Kind() == Joker }
-
-// sort pokers by order
-type ByOrder []Poker
-
-func (by ByOrder) Len() int           { return len(by) }
-func (by ByOrder) Less(i, j int) bool { return by[i].Order() < by[j].Order() }
-func (by ByOrder) Swap(i, j int)      { by[i], by[j] = by[j], by[i] }
-
-// sort pokers by value
-type ByValue []Poker
-
-func (by ByValue) Len() int           { return len(by) }
-func (by ByValue) Less(i, j int) bool { return by[i].Value() < by[j].Value() }
-func (by ByValue) Swap(i, j int)      { by[i], by[j] = by[j], by[i] }
-
-// GetPokers returns 54 pokers
-func GetPokers() []Poker {
-	return []Poker{
-		// ♠️
-		New(Spade, 1),
-		New(Spade, 2),
-		New(Spade, 3),
-		New(Spade, 4),
-		New(Spade, 5),
-		New(Spade, 6),
-		New(Spade, 7),
-		New(Spade, 8),
-		New(Spade, 9),
-		New(Spade, 10),
-		New(Spade, 11),
-		New(Spade, 12),
-		New(Spade, 13),
-
-		// ♥️
-		New(Heart, 1),
-		New(Heart, 2),
-		New(Heart, 3),
-		New(Heart, 4),
-		New(Heart, 5),
-		New(Heart, 6),
-		New(Heart, 7),
-		New(Heart, 8),
-		New(Heart, 9),
-		New(Heart, 10),
-		New(Heart, 11),
-		New(Heart, 12),
-		New(Heart, 13),
-
-		// ♣️
-		New(Club, 1),
-		New(Club, 2),
-		New(Club, 3),
-		New(Club, 4),
-		New(Club, 5),
-		New(Club, 6),
-		New(Club, 7),
-		New(Club, 8),
-		New(Club, 9),
-		New(Club, 10),
-		New(Club, 11),
-		New(Club, 12),
-		New(Club, 13),
-
-		// ♦️
-		New(Diamond, 1),
-		New(Diamond, 2),
-		New(Diamond, 3),
-		New(Diamond, 4),
-		New(Diamond, 5),
-		New(Diamond, 6),
-		New(Diamond, 7),
-		New(Diamond, 8),
-		New(Diamond, 9),
-		New(Diamond, 10),
-		New(Diamond, 11),
-		New(Diamond, 12),
-		New(Diamond, 13),
-
-		New(Joker, OrderOfJoker1),
-		New(Joker, OrderOfJoker2),
-	}
+func (c Poker) IsJoker() bool {
+	kind, order := c.Kind(), c.Order()
+	return kind == Joker && (order == OrderOfColoredJoker || order == OrderOfPlainJoker)
 }
 
-const (
-	OrderOfJoker1 = 14
-	OrderOfJoker2 = 15
-)
+// sort pokers by order
+type ByOrder []uint8
+
+func (by ByOrder) Len() int { return len(by) }
+func (by ByOrder) Less(i, j int) bool {
+	o1, o2 := Poker(by[i]).Order(), Poker(by[j]).Order()
+	if o1 == o2 {
+		return by[i] < by[j]
+	}
+	return o1 < o2
+}
+func (by ByOrder) Swap(i, j int) { by[i], by[j] = by[j], by[i] }
+
+// sort pokers by value
+type ByValue []uint8
+
+func (by ByValue) Len() int { return len(by) }
+func (by ByValue) Less(i, j int) bool {
+	v1, v2 := Poker(by[i]).Value(), Poker(by[j]).Value()
+	if v1 == v2 {
+		return by[i] < by[j]
+	}
+	return v1 < v2
+}
+func (by ByValue) Swap(i, j int) { by[i], by[j] = by[j], by[i] }
+
+// GetPokers returns 54 pokers
+func GetPokers() []uint8 {
+	return []uint8{
+		// ♠️
+		uint8(New(Spade, 1)),
+		uint8(New(Spade, 2)),
+		uint8(New(Spade, 3)),
+		uint8(New(Spade, 4)),
+		uint8(New(Spade, 5)),
+		uint8(New(Spade, 6)),
+		uint8(New(Spade, 7)),
+		uint8(New(Spade, 8)),
+		uint8(New(Spade, 9)),
+		uint8(New(Spade, 10)),
+		uint8(New(Spade, 11)),
+		uint8(New(Spade, 12)),
+		uint8(New(Spade, 13)),
+
+		// ♥️
+		uint8(New(Heart, 1)),
+		uint8(New(Heart, 2)),
+		uint8(New(Heart, 3)),
+		uint8(New(Heart, 4)),
+		uint8(New(Heart, 5)),
+		uint8(New(Heart, 6)),
+		uint8(New(Heart, 7)),
+		uint8(New(Heart, 8)),
+		uint8(New(Heart, 9)),
+		uint8(New(Heart, 10)),
+		uint8(New(Heart, 11)),
+		uint8(New(Heart, 12)),
+		uint8(New(Heart, 13)),
+
+		// ♣️
+		uint8(New(Club, 1)),
+		uint8(New(Club, 2)),
+		uint8(New(Club, 3)),
+		uint8(New(Club, 4)),
+		uint8(New(Club, 5)),
+		uint8(New(Club, 6)),
+		uint8(New(Club, 7)),
+		uint8(New(Club, 8)),
+		uint8(New(Club, 9)),
+		uint8(New(Club, 10)),
+		uint8(New(Club, 11)),
+		uint8(New(Club, 12)),
+		uint8(New(Club, 13)),
+
+		// ♦️
+		uint8(New(Diamond, 1)),
+		uint8(New(Diamond, 2)),
+		uint8(New(Diamond, 3)),
+		uint8(New(Diamond, 4)),
+		uint8(New(Diamond, 5)),
+		uint8(New(Diamond, 6)),
+		uint8(New(Diamond, 7)),
+		uint8(New(Diamond, 8)),
+		uint8(New(Diamond, 9)),
+		uint8(New(Diamond, 10)),
+		uint8(New(Diamond, 11)),
+		uint8(New(Diamond, 12)),
+		uint8(New(Diamond, 13)),
+
+		uint8(New(Joker, OrderOfColoredJoker)),
+		uint8(New(Joker, OrderOfPlainJoker)),
+	}
+}
 
 // Deal deals pokers, pokers = GetPokers if len(pokers) is 0
 // nums represents number of poker for each player
 // source could be nil
-func Deal(nums []int, pokers []Poker, source random.Source) (res [][]Poker, remains []Poker) {
+func Deal(nums []int, pokers []uint8, source random.Source) (res [][]uint8, leftover []uint8) {
 	if len(pokers) == 0 {
 		pokers = GetPokers()
 	}
 	random.Shuffle(ByOrder(pokers), source)
 
-	res = make([][]Poker, len(nums))
+	res = make([][]uint8, len(nums))
 	usedTotalNum := 0
 	for i, num := range nums {
 		if usedTotalNum+num < len(pokers) {
@@ -154,6 +174,6 @@ func Deal(nums []int, pokers []Poker, source random.Source) (res [][]Poker, rema
 		sort.Sort(ByValue(res[i]))
 		usedTotalNum += len(res[i])
 	}
-	remains = pokers[usedTotalNum:]
+	leftover = pokers[usedTotalNum:]
 	return
 }

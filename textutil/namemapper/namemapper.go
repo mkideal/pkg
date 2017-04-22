@@ -173,7 +173,7 @@ func split(s string) ([]string, bool) {
 			}
 			ccase = 0
 			word.Reset()
-		} else if b >= 0 && b <= 9 {
+		} else if b >= '0' && b <= '9' {
 			word.WriteByte(b)
 		} else {
 			return nil, false
