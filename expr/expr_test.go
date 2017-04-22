@@ -261,7 +261,7 @@ func TestOp(t *testing.T) {
 			t.Errorf("%dth: want error `%s', got nil", i, tc.err)
 			continue
 		}
-		eq, _ := tc.result.Neq(got)
+		eq, _ := tc.result.Ne(got)
 		if eq.Bool() {
 			t.Errorf("%dth: result error, want `%s', got `%s'", i, tc.result.String(), got.String())
 		}
@@ -314,7 +314,7 @@ func TestOpWithGetter(t *testing.T) {
 			t.Errorf("%dth: want error `%s', got nil", i, tc.err)
 			continue
 		}
-		eq, _ := tc.result.Neq(got)
+		eq, _ := tc.result.Ne(got)
 		if eq.Bool() {
 			t.Errorf("%dth: result error, want `%s', got `%s'", i, tc.result.String(), got.String())
 		}

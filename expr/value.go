@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	ErrFailToParseInteger    = errors.New("fail to parse integer")
-	ErrFailToParseFloat      = errors.New("fail to parse float")
+	ErrFailedToParseInteger  = errors.New("failed to parse integer")
+	ErrFailedToParseFloat    = errors.New("failed to parse float")
 	ErrNotAnInteger          = errors.New("not an integer")
 	ErrNotAFloat             = errors.New("not a float")
 	ErrUnsupportedType       = errors.New("unsupported type")
@@ -67,29 +67,21 @@ func NewValue(kind Kind) Value {
 	return Value{kind: kind}
 }
 
-var numberBases = []int{10, 16, 8}
-
 func (v *Value) Set(s string) error {
 	switch v.kind {
 	case KindString:
 		// donothing
 	case KindInt:
-		isInt := false
-		for _, base := range numberBases {
-			if i, err := strconv.ParseInt(s, base, 64); err == nil {
-				v.intValue = i
-				isInt = true
-				break
-			}
-		}
-		if !isInt {
-			return ErrFailToParseInteger
+		if i, err := strconv.ParseInt(s, 0, 64); err == nil {
+			v.intValue = i
+		} else {
+			return ErrFailedToParseInteger
 		}
 	case KindFloat:
 		if f, err := strconv.ParseFloat(s, 64); err == nil {
 			v.floatValue = f
 		} else {
-			return ErrFailToParseFloat
+			return ErrFailedToParseFloat
 		}
 	default:
 		return ErrUnsupportedType
@@ -141,7 +133,7 @@ func (v Value) Or(v2 Value) Value           { return Bool(v.Bool() || v2.Bool())
 func (v Value) Not() Value                  { return Bool(!v.Bool()) }
 func (v Value) Eq(v2 Value) (Value, error)  { return compare(v, v2, stringEq, intEq, floatEq) }
 
-func (v Value) Neq(v2 Value) (Value, error) {
+func (v Value) Ne(v2 Value) (Value, error) {
 	result, err := v.Eq(v2)
 	if err == nil {
 		result = result.Not()

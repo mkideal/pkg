@@ -9,44 +9,10 @@ import (
 	"github.com/mkideal/pkg/encoding"
 )
 
-// NodeKind represents kind of json
-type NodeKind int
-
-const (
-	InvalidNode NodeKind = iota
-	IdentNode            // abc,true,false
-	IntNode              // 1
-	FloatNode            // 1.2
-	CharNode             // 'c'
-	StringNode           // "xyz"
-	ObjectNode           // {}
-	ArrayNode            // []
-)
-
-func (kind NodeKind) String() string {
-	if kind >= 0 && kind < NodeKind(len(nodeKinds)) {
-		return nodeKinds[kind]
-	}
-	return "Unknown kind(" + strconv.Itoa(int(kind)) + ")"
-}
-
-var nodeKinds = [...]string{
-	InvalidNode: "InvalidNode",
-	IdentNode:   "IdentNode",
-	IntNode:     "IntNode",
-	FloatNode:   "FloatNode",
-	CharNode:    "CharNode",
-	StringNode:  "StringNode",
-	ObjectNode:  "ObjectNode",
-	ArrayNode:   "ArrayNode",
-}
-
 // Node represents top-level json object
 type Node interface {
 	// embed encoding.Node
 	encoding.Node
-	// Kind returns kind of node
-	Kind() NodeKind
 	// Doc returns lead comments
 	Doc() *encoding.CommentGroup
 	// Comment returns line comments
@@ -157,7 +123,7 @@ func (n objectNode) Value() interface{} {
 }
 
 func (n objectNode) IsEmpty() bool                { return len(n.children) == 0 }
-func (n objectNode) Kind() NodeKind               { return ObjectNode }
+func (n objectNode) Kind() encoding.NodeKind      { return encoding.ObjectNode }
 func (n objectNode) NumChild() int                { return len(n.children) }
 func (n objectNode) ByIndex(i int) (string, Node) { return n.children[i].key, n.children[i].value }
 func (n objectNode) ByKey(key string) Node {
@@ -245,7 +211,7 @@ func (n arrayNode) Value() interface{} {
 }
 
 func (n arrayNode) IsEmpty() bool                { return len(n.children) == 0 }
-func (n arrayNode) Kind() NodeKind               { return ArrayNode }
+func (n arrayNode) Kind() encoding.NodeKind      { return encoding.ArrayNode }
 func (n arrayNode) NumChild() int                { return len(n.children) }
 func (n arrayNode) ByIndex(i int) (string, Node) { return "", n.children[i] }
 func (n arrayNode) ByKey(key string) Node        { return nil }
@@ -286,7 +252,7 @@ func (n *arrayNode) output(prefix string, w io.Writer, opt options, topNode, las
 // literalNode represents a literal node, e.g. char,string,ident,float,int
 type literalNode struct {
 	nodebase
-	kind  NodeKind
+	kind  encoding.NodeKind
 	value string
 }
 
@@ -299,15 +265,15 @@ func newLiteralNode(pos scanner.Position, tok rune, value string) (*literalNode,
 	}
 	switch tok {
 	case scanner.Char:
-		n.kind = CharNode
+		n.kind = encoding.CharNode
 	case scanner.String:
-		n.kind = StringNode
+		n.kind = encoding.StringNode
 	case scanner.Float:
-		n.kind = FloatNode
+		n.kind = encoding.FloatNode
 	case scanner.Int:
-		n.kind = IntNode
+		n.kind = encoding.IntNode
 	case scanner.Ident:
-		n.kind = IdentNode
+		n.kind = encoding.IdentNode
 	default:
 		return nil, fmt.Errorf("unexpected begin of json node %v at %v", value, pos)
 	}
@@ -316,19 +282,19 @@ func newLiteralNode(pos scanner.Position, tok rune, value string) (*literalNode,
 
 func (n literalNode) Value() interface{} {
 	switch n.kind {
-	case CharNode:
+	case encoding.CharNode:
 		value, _, _, _ := strconv.UnquoteChar(n.value, '\'')
 		return value
-	case StringNode:
+	case encoding.StringNode:
 		value, _ := strconv.Unquote(n.value)
 		return value
-	case FloatNode:
+	case encoding.FloatNode:
 		value, _ := strconv.ParseFloat(n.value, 64)
 		return value
-	case IntNode:
+	case encoding.IntNode:
 		value, _ := strconv.ParseInt(n.value, 0, 64)
 		return value
-	case IdentNode:
+	case encoding.IdentNode:
 		return n.value
 	default:
 		return nil
@@ -340,23 +306,23 @@ func (n literalNode) IsEmpty() bool {
 		return true
 	}
 	switch n.kind {
-	case CharNode:
+	case encoding.CharNode:
 		return n.value == `'\0'`
-	case StringNode:
+	case encoding.StringNode:
 		return false
-	case FloatNode:
+	case encoding.FloatNode:
 		value, _ := strconv.ParseFloat(n.value, 64)
 		return value == 0
-	case IntNode:
+	case encoding.IntNode:
 		return n.value == "0"
-	case IdentNode:
+	case encoding.IdentNode:
 		return false
 	default:
 		return false
 	}
 }
 
-func (n literalNode) Kind() NodeKind               { return n.kind }
+func (n literalNode) Kind() encoding.NodeKind      { return n.kind }
 func (n literalNode) NumChild() int                { return 0 }
 func (n literalNode) ByIndex(i int) (string, Node) { return "", nil }
 func (n literalNode) ByKey(key string) Node        { return nil }

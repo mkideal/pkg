@@ -6,10 +6,6 @@ import (
 	"text/scanner"
 )
 
-type Node interface {
-	Pos() scanner.Position
-}
-
 type Comment struct {
 	Slash scanner.Position
 	Text  string
