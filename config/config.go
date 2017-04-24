@@ -20,17 +20,17 @@ var (
 	errUnsupportedOutputFormat = errors.New("unsupported output format")
 )
 
-type Configuration interface {
+type Configurator interface {
 	Init(conf interface{}) error
 }
 
-type FlagConfiguration interface {
-	Configuration
+type CommandLineConfigurator interface {
+	Configurator
 	SetCommandLineFlags(*flag.FlagSet)
 }
 
-// ConfigBase implements Configuration interface
-type ConfigBase struct {
+// Config implements Configurator interface
+type Config struct {
 	// source of config, must be a filename or http URL
 	SourceOfConfig string `json:"-" xml:"-" cli:"config-source" usage:"source of config, filename or http URL"`
 	// output of config, exit process if non-empty
@@ -44,7 +44,7 @@ func filenameSuffix(filename, dft string) string {
 	return dft
 }
 
-func (c *ConfigBase) Init(conf interface{}) error {
+func (c *Config) Init(conf interface{}) error {
 	if c.SourceOfConfig != "" {
 		var (
 			reader io.Reader
@@ -128,18 +128,18 @@ func (c *ConfigBase) Init(conf interface{}) error {
 	return nil
 }
 
-// FlagConfig implements FlagConfiguration interface
-type FlagConfig struct {
-	ConfigBase
+// CommandLineConfig implements CommandLineConfigurator interface
+type CommandLineConfig struct {
+	Config
 	sourceFlag string `json:"-" xml:"-" cli:"-"`
 	outputFlag string `json:"-" xml:"-" cli:"-"`
 }
 
-func NewFlagConfig(sourceFlag, outputFlag string) *FlagConfig {
-	return &FlagConfig{sourceFlag: sourceFlag, outputFlag: outputFlag}
+func NewCommandLineConfig(sourceFlag, outputFlag string) *CommandLineConfig {
+	return &CommandLineConfig{sourceFlag: sourceFlag, outputFlag: outputFlag}
 }
 
-func (c *FlagConfig) SetCommandLineFlags(flagSet *flag.FlagSet) {
-	flagSet.StringVar(&c.SourceOfConfig, c.sourceFlag, "", "source of config, filename or http URL")
-	flagSet.StringVar(&c.OutputOfConfig, c.outputFlag, "", "output of config, exit process if non-empty")
+func (c *CommandLineConfig) SetCommandLineFlags(flagSet *flag.FlagSet) {
+	flagSet.StringVar(&c.SourceOfConfig, c.sourceFlag, c.SourceOfConfig, "source of config, filename or http URL")
+	flagSet.StringVar(&c.OutputOfConfig, c.outputFlag, c.OutputOfConfig, "output of config, exit process if non-empty")
 }
