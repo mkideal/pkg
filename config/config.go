@@ -139,6 +139,13 @@ func NewCommandLineConfig(sourceFlag, outputFlag string) *CommandLineConfig {
 	return &CommandLineConfig{sourceFlag: sourceFlag, outputFlag: outputFlag}
 }
 
+func (c *CommandLineConfig) Init(conf interface{}) error {
+	if !flag.Parsed() {
+		flag.Parse()
+	}
+	return c.Config.Init(conf)
+}
+
 func (c *CommandLineConfig) SetCommandLineFlags(flagSet *flag.FlagSet) {
 	flagSet.StringVar(&c.SourceOfConfig, c.sourceFlag, c.SourceOfConfig, "source of config, filename or http URL")
 	flagSet.StringVar(&c.OutputOfConfig, c.outputFlag, c.OutputOfConfig, "output of config, exit process if non-empty")
