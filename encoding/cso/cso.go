@@ -10,7 +10,7 @@ import (
 	"github.com/mkideal/pkg/encoding"
 )
 
-// cson represents Comma-Separated Objects
+// cso represents Comma-Separated Objects
 //
 // types:
 //	Integer
@@ -95,17 +95,16 @@ func ReadAll(r io.Reader) ([]Node, error) {
 			return nil, err
 		}
 		nodes = append(nodes, n)
-		fmt.Printf("lr.eof: %v\n", lr.eof)
 	}
 	return nodes, nil
 }
 
-// ReadBytes read a json node from bytes
+// ReadBytes reads nodes from bytes
 func ReadBytes(data []byte) ([]Node, error) {
 	return ReadAll(bytes.NewBuffer(data))
 }
 
-// ReadFile read a json node from file
+// ReadFile reads nodes from file
 func ReadFile(filename string) ([]Node, error) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -113,4 +112,18 @@ func ReadFile(filename string) ([]Node, error) {
 	}
 	defer file.Close()
 	return ReadAll(file)
+}
+
+// Write writes node to writer
+func Write(w io.Writer, node Node) error {
+	return node.output(w)
+}
+
+// WriteFile writes node to file
+func WriteFile(filename string, node Node, perm os.FileMode) error {
+	file, err := os.OpenFile(filenname, os.O_CREATE|os.O_WRONLY, perm)
+	if err == nil {
+		err = Write(file, node)
+	}
+	return err
 }

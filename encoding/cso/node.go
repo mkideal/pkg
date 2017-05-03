@@ -12,6 +12,7 @@ import (
 type Node interface {
 	// embed encoding.Node
 	encoding.Node
+	// NumChild returns number of children
 	NumChild() int
 	// ByIndex gets ith child node,panic if i out of range [0,NumChild)
 	ByIndex(i int) Node

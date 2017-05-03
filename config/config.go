@@ -80,10 +80,13 @@ func (c *Config) Init(conf interface{}) error {
 		if reader != nil {
 			switch format {
 			case "json":
-				// using jsonx to support c-style comments and extra comma at last element of object or array
+				// using jsonx to support c++-style comments and extra comma at last element of object or array
 				err = jsonx.NewDecoder(reader, jsonx.WithComment(), jsonx.WithExtraComma()).Decode(conf)
 			case "xml":
 				err = xml.NewDecoder(reader).Decode(conf)
+			// TODO: case "ini", "toml", "yaml" ...
+			default:
+				err = errUnsupportedOutputFormat
 			}
 		}
 		if err != nil {

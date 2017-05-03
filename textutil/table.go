@@ -141,7 +141,7 @@ func (tv TableView) ColCount() int {
 }
 
 func (tv TableView) Get(i, j int) string {
-	return tv.table.Get(tv.rowCount+i, tv.colCount+j)
+	return tv.table.Get(tv.rowIndex+i, tv.colIndex+j)
 }
 
 // ClipTable creates a view of table

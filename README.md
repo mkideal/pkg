@@ -6,8 +6,8 @@
 
 `pkg` contains some utility packages.
 
-* **container** - implement some containers: ArrayMap, BoolSlice
-* **debug** - some functions for debugging
-* **expr** - evaluate expression
-* **option** - default parametor of function
-* **textutil** - text operations
+## Install
+
+```sh
+go get github.com/mkideal/pkg
+```

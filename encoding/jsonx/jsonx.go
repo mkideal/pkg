@@ -44,7 +44,7 @@ func WithPrefix(prefix string) Option {
 	}
 }
 
-// WithIndent return an option which with indent while outputing
+// WithIndent returns an option which with indent while outputing
 func WithIndent(indent string) Option {
 	return func(opt *options) {
 		opt.indent = indent
@@ -89,12 +89,12 @@ func Read(r io.Reader, opts ...Option) (Node, error) {
 	return p.parseNode()
 }
 
-// ReadBytes read a json node from bytes
+// ReadBytes reads a json node from bytes
 func ReadBytes(data []byte, opts ...Option) (Node, error) {
 	return Read(bytes.NewBuffer(data), opts...)
 }
 
-// ReadFile read a json node from file
+// ReadFile reads a json node from file
 func ReadFile(filename string, opts ...Option) (Node, error) {
 	file, err := os.Open(filename)
 	if err != nil {
