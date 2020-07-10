@@ -6,6 +6,6 @@ import (
 	"syscall"
 )
 
-func pidIsExist(pid int) bool {
+func isPidExist(pid int) bool {
 	return syscall.Kill(pid, 0) == nil
 }

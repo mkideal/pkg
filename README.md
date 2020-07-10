@@ -6,8 +6,3 @@
 
 `pkg` contains some utility packages.
 
-## Install
-
-```sh
-go get github.com/mkideal/pkg
-```

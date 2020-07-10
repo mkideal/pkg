@@ -2,7 +2,6 @@ package cso
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"text/scanner"
@@ -121,7 +120,7 @@ func Write(w io.Writer, node Node) error {
 
 // WriteFile writes node to file
 func WriteFile(filename string, node Node, perm os.FileMode) error {
-	file, err := os.OpenFile(filenname, os.O_CREATE|os.O_WRONLY, perm)
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, perm)
 	if err == nil {
 		err = Write(file, node)
 	}

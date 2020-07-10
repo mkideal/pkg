@@ -6,7 +6,7 @@ import (
 	"syscall"
 )
 
-func pidIsExist(pid int) bool {
+func isPidExist(pid int) bool {
 	p, err := syscall.OpenProcess(0x1000, false, uint32(pid))
 	if err != nil {
 		return false

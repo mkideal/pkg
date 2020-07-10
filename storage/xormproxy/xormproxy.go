@@ -52,7 +52,7 @@ func (p *proxySession) Remove(tableName, keyName string, keys ...interface{}) (i
 		}
 		fmt.Fprintf(&buf, "%s = ?", keyName)
 	}
-	result, err := p.session.Exec(buf.String(), keys...)
+	result, err := p.session.Exec(append([]interface{}{buf.String()}, keys...)...)
 	if err != nil {
 		return 0, err
 	}

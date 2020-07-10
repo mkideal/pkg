@@ -10,7 +10,7 @@ import (
 )
 
 func Exsit(pid int) bool {
-	return pidIsExist(pid)
+	return isPidExist(pid)
 }
 
 func New(filename string) error {
@@ -29,7 +29,7 @@ func New(filename string) error {
 		if err != nil {
 			return nil
 		}
-		if pidIsExist(pid) {
+		if isPidExist(pid) {
 			return fmt.Errorf("pid file found, ensoure %s is not running", os.Args[0])
 		}
 	}
