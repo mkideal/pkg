@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-
-	"github.com/mkideal/pkg/option"
 )
 
 var (
@@ -142,27 +140,27 @@ func readResultFromResponse(resp *http.Response, err error) Result {
 	return result
 }
 
-func Response(w http.ResponseWriter, status int, acceptType string, value interface{}, debug ...bool) error {
+func Response(w http.ResponseWriter, status int, acceptType string, value interface{}) error {
 	switch {
 	case strings.HasPrefix(acceptType, MIMEApplicationXML):
-		return XMLResponse(w, status, value, debug...)
+		return XMLResponse(w, status, value)
 	case strings.HasPrefix(acceptType, MIMEApplicationForm):
 		return FormResponse(w, status, value)
 	default:
-		return JSONResponse(w, status, value, debug...)
+		return JSONResponse(w, status, value)
 	}
 }
 
-func JSONResponse(w http.ResponseWriter, status int, value interface{}, debug ...bool) error {
-	return ResponseWithMarshaler(w, status, MIMEApplicationJSONCharsetUTF8, value, json.Marshal, json.MarshalIndent, debug...)
+func JSONResponse(w http.ResponseWriter, status int, value interface{}) error {
+	return ResponseWithMarshaler(w, status, MIMEApplicationJSONCharsetUTF8, value, json.Marshal)
 }
 
-func XMLResponse(w http.ResponseWriter, status int, value interface{}, debug ...bool) error {
-	return ResponseWithMarshaler(w, status, MIMEApplicationXMLCharsetUTF8, value, xml.Marshal, xml.MarshalIndent, debug...)
+func XMLResponse(w http.ResponseWriter, status int, value interface{}) error {
+	return ResponseWithMarshaler(w, status, MIMEApplicationXMLCharsetUTF8, value, xml.Marshal)
 }
 
 func FormResponse(w http.ResponseWriter, status int, value interface{}) error {
-	return ResponseWithMarshaler(w, status, MIMEApplicationForm, value, MarshalForm, nil)
+	return ResponseWithMarshaler(w, status, MIMEApplicationForm, value, MarshalForm)
 }
 
 func TextResponse(w http.ResponseWriter, status int, value string) error {
@@ -191,21 +189,12 @@ func ResponseWithMarshaler(
 	contentType string,
 	value interface{},
 	marshal MarshalFunc,
-	marshalIndent MarshalIndentFunc,
-	debug ...bool) error {
-	var (
-		b   []byte
-		err error
-	)
-	if option.Bool(false, debug...) && marshalIndent != nil {
-		b, err = marshalIndent(value, "", "  ")
-	} else {
-		b, err = marshal(value)
-	}
-	if err != nil {
+) error {
+	if b, err := marshal(value); err != nil {
 		return err
+	} else {
+		return BlobResponse(w, status, contentType, b)
 	}
-	return BlobResponse(w, status, contentType, b)
 }
 
 func BlobResponse(w http.ResponseWriter, status int, contentType string, b []byte) error {

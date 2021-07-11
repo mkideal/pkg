@@ -1,9 +1,8 @@
 package errors
 
 import (
+	"runtime/debug"
 	"sync/atomic"
-
-	"github.com/mkideal/pkg/debug"
 )
 
 // Error aliases string
@@ -35,7 +34,7 @@ func (e traceError) Error() string {
 // Throw throws an error which contains stack information
 func Throw(text string) error {
 	if atomic.LoadInt32(&enableTrace) != 0 {
-		return traceError{stack: string(debug.Stack(2)) + "\n", text: text}
+		return traceError{stack: string(debug.Stack()) + "\n", text: text}
 	}
 	return traceError{text: text}
 }
@@ -69,7 +68,7 @@ func (e wrapStackError) Core() error { return e.err }
 
 // Wrap wraps another error
 func Wrap(err error) error {
-	return wrapStackError{stack: string(debug.Stack(2)), err: err}
+	return wrapStackError{stack: string(debug.Stack()), err: err}
 }
 
 // Core returns wrapped error

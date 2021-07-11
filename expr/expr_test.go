@@ -5,8 +5,6 @@ import (
 	"math"
 	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestConstExpr(t *testing.T) {
@@ -180,11 +178,17 @@ func TestOnVarMissing(t *testing.T) {
 		return DefaultOnVarMissing(varName)
 	})
 	v, err := Eval("2 / b + a + x", map[string]Value{"x": Int(1)}, pool)
-	assert.Nil(t, err)
-	assert.Equal(t, float64(3), v.Float())
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if v.Float() != 3 {
+		t.Fatalf("want 3, but got %v", v.Float())
+	}
 
 	v, err = Eval("2 / b + a + undefined", nil, pool)
-	assert.NotNil(t, err)
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
 }
 
 func TestOp(t *testing.T) {
